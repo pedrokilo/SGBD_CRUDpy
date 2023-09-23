@@ -252,6 +252,7 @@ class MainApp(QMainWindow):
             self.comboBox_TablasLlaves.addItems(llaves)
 
     def cargar_atributos_en_combobox(self, nombre_tabla):
+        """Carga los atributos de una tabla en el QComboBox."""
         print("cargar_atributos_en_combobox se está ejecutando")  # Añade esta línea
         # Suponiendo que tienes una función que devuelve los nombres de los atributos de una tabla
         atributos = self.obtener_atributos_de_tabla(nombre_tabla)
@@ -440,6 +441,12 @@ class MainApp(QMainWindow):
             tipo_dato += f"({valores})"
 
         consulta = f"ALTER TABLE `{nombre_tabla_actual}` ADD {nombre_atributo} {tipo_dato}"
+
+        # Verificar si el radio button de llave primaria está seleccionado
+        if self.radioButton_primario.isChecked():
+            consulta += f", ADD PRIMARY KEY ({nombre_atributo})"
+        # Si deseas manejar el radioButton_noaplica, puedes agregar una condición adicional aquí, aunque no parece necesario
+        # ya que si no es una llave primaria simplemente no haces nada adicional.
 
         try:
             self.cursor.execute(consulta)
