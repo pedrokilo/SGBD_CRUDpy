@@ -67,10 +67,9 @@ class MainApp(QMainWindow):
         self.tablas = {}
         # Inicializar el diccionario de filas agregadas
         self.filas_agregadas = {}
-        # Agregar esto al inicio de la clase MainWindow
-        self.cambios_por_pestana = {}
         # Configurar la pestaña/tabla inicial
         self.cargar_tablas_desde_db()
+        self.cargar_esquemas_disponibles()
 
         # Configurar la pestaña/tabla inicial
         self.tabWidget.currentChanged.connect(self.cambiar_tabla_actual)
@@ -81,6 +80,12 @@ class MainApp(QMainWindow):
             tabla_widget.setEditTriggers(QTableWidget.NoEditTriggers)
             tabla_widget.setSelectionBehavior(QTableWidget.SelectRows)
             tabla_widget.setSelectionMode(QAbstractItemView.SingleSelection)
+
+        self.cargar_tipos_datos()
+
+        self.tabWidget.currentChanged.connect(self.actualizar_combobox_atributos)
+        self.tabWidget.currentChanged.connect(self.actualizar_combobox_llaves)
+        self.cbox_tiposdatos.currentIndexChanged.connect(self.mostrar_spinbox_si_es_necesario)
 
         # Variable para rastrear si la edición está habilitada
         self.modificar_habilitado = False
@@ -175,6 +180,119 @@ class MainApp(QMainWindow):
 
     # Forzar una actualización de la pestaña/tabla actual
         self.tabWidget.currentWidget().repaint()
+
+    def obtener_llaves_primarias(self, nombre_tabla):
+        """Obtiene las llaves primarias de una tabla."""
+        dbms = self.dbms
+        if dbms == 'SQL Server' or dbms == 'SQL Server (Old)':
+            query = f"""
+                SELECT COLUMN_NAME 
+                FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
+                WHERE TABLE_NAME = '{nombre_tabla}' AND CONSTRAINT_SCHEMA = 'dbo';
+            """
+        elif dbms == 'Microsoft Access':
+            # Para Microsoft Access, obtener las llaves primarias puede ser más complicado.
+            # Esta consulta es una suposición y puede que necesites ajustarla.
+            # Nota: Esta consulta podría no ser precisa para obtener llaves primarias en Access.
+            query = f"SELECT name FROM MSysObjects WHERE type=1 AND flags=0 AND name LIKE '{nombre_tabla}%'"
+        elif dbms == 'SQL Server Native Client RDA':
+            # Suponiendo que es similar a SQL Server
+            query = f"""
+                SELECT COLUMN_NAME 
+                FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
+                WHERE TABLE_NAME = '{nombre_tabla}';
+            """
+        elif dbms in ['SQLite3', 'SQLite', 'SQLite UTF-8']:
+            query = f"PRAGMA table_info({nombre_tabla})"
+        elif dbms == 'MySQL':
+            query = f"""
+                SELECT COLUMN_NAME 
+                FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
+                WHERE TABLE_NAME = '{nombre_tabla}' AND CONSTRAINT_NAME = 'PRIMARY';
+            """
+        else:
+            # Consulta genérica como fallback
+            query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{nombre_tabla}'"
+
+        self.cursor.execute(query)
+        resultados = self.cursor.fetchall()
+
+        if dbms in ['SQLite3', 'SQLite', 'SQLite UTF-8']:
+            # En SQLite, la consulta PRAGMA table_info devuelve una lista de columnas.
+            # La columna 'pk' indica si es una llave primaria (1 si es llave primaria, 0 si no lo es).
+            llaves = [columna[1] for columna in resultados if columna[5] == 1]
+        else:
+            llaves = [resultado[0] for resultado in resultados]
+
+        return llaves
+
+    def actualizar_combobox_llaves(self, index):
+        nombre_tabla_actual = self.tabWidget.tabText(index)
+        todas_las_tablas = [self.tabWidget.tabText(i) for i in range(self.tabWidget.count())]
+
+        # Excluir la tabla actual de la lista de todas las tablas
+        otras_tablas = [tabla for tabla in todas_las_tablas if tabla != nombre_tabla_actual]
+
+        # Limpiar el combobox antes de llenarlo
+        self.comboBox_TablasLlaves.clear()
+
+        # Cargar las llaves primarias de las otras tablas
+        for tabla in otras_tablas:
+            llaves = self.obtener_llaves_primarias(tabla)
+            for llave in llaves:
+                self.comboBox_TablasLlaves.addItem(f"{tabla}.{llave}")
+
+    def cargar_llaves_en_combobox(self, nombre_tabla, tabla_a_excluir=None):
+        """Carga las llaves primarias de una tabla en el QComboBox."""
+        print("cargar_llaves_en_combobox se está ejecutando")  # Añade esta línea
+        llaves = self.obtener_llaves_primarias(nombre_tabla)
+
+        # Si la tabla actual es la misma que la tabla a excluir, no agregues sus llaves al combobox
+        if nombre_tabla != tabla_a_excluir:
+            self.comboBox_TablasLlaves.addItems(llaves)
+
+    def cargar_atributos_en_combobox(self, nombre_tabla):
+        print("cargar_atributos_en_combobox se está ejecutando")  # Añade esta línea
+        # Suponiendo que tienes una función que devuelve los nombres de los atributos de una tabla
+        atributos = self.obtener_atributos_de_tabla(nombre_tabla)
+        self.cbox_atributo.clear()
+        self.cbox_atributo.addItems(atributos)
+
+    def actualizar_combobox_atributos(self, index):
+        nombre_tabla_actual = self.tabWidget.tabText(index)
+        self.cargar_atributos_en_combobox(nombre_tabla_actual)
+
+    def obtener_atributos_de_tabla(self, nombre_tabla):
+        dbms = self.dbms
+        if dbms == 'SQL Server' or dbms == 'SQL Server (Old)':
+            query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{nombre_tabla}'"
+        elif dbms == 'Microsoft Access':
+            # Para Microsoft Access, obtener los atributos puede ser un poco más complicado.
+            # Esta consulta es una suposición y puede que necesites ajustarla.
+            query = f"SELECT name FROM MSysObjects WHERE type=1 AND flags=0 AND name LIKE '{nombre_tabla}%'"
+        elif dbms == 'SQL Server Native Client RDA':
+            # Suponiendo que es similar a SQL Server
+            query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{nombre_tabla}'"
+        elif dbms in ['SQLite3', 'SQLite', 'SQLite UTF-8']:
+            query = f"PRAGMA table_info({nombre_tabla})"
+        elif dbms == 'MySQL':
+            query = f"SHOW COLUMNS FROM `{nombre_tabla}`"
+        else:
+            # Consulta genérica como fallback
+            query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{nombre_tabla}'"
+
+        self.cursor.execute(query)
+        columnas = self.cursor.fetchall()
+
+        if dbms in ['SQLite3', 'SQLite', 'SQLite UTF-8']:
+            return [columna[1] for columna in columnas]
+        elif dbms == 'MySQL':
+            return [columna[0] for columna in columnas]
+        else:
+            return [columna[0] for columna in columnas]
+
+        print(f"Consulta ejecutada: {query}")  # Imprimir la consulta
+        print(f"Resultados: {columnas}")  # Imprimir los resultados
 
     def cancelar_modificacion(self):
         # Esta función se llama cuando se hace clic en el botón "CANCELARbtn"
@@ -287,27 +405,73 @@ class MainApp(QMainWindow):
         except Exception as e:
             self.mostrar_mensaje_emergente(f"Error al eliminar la tabla: {str(e)}")
 
+    def mostrar_spinbox_si_es_necesario(self, index):
+        tipo_dato = self.cbox_tiposdatos.itemText(index)
+        if tipo_dato in ["TINYINT", "SMALLINT", "MEDIUMINT", "INT", "INTEGER", "BIGINT", "CHAR", "VARCHAR"]:
+            self.spinBox_atributo.show()
+        else:
+            self.spinBox_atributo.hide()
+
+    def cargar_tipos_datos(self):
+        tipos_datos = [
+            "TINYINT", "SMALLINT", "MEDIUMINT", "INT", "INTEGER", "BIGINT",
+            "REAL", "DOUBLE", "FLOAT", "DECIMAL", "NUMERIC",
+            "DATE", "TIME", "TIMESTAMP", "DATETIME",
+            "CHAR", "VARCHAR", "TINYBLOB", "BLOB", "MEDIUMBLOB", "LONGBLOB",
+            "TINYTEXT", "TEXT", "MEDIUMTEXT", "LONGTEXT", "ENUM", "SET", "spatial_type"
+        ]
+        self.cbox_tiposdatos.addItems(tipos_datos)
+
     def crear_atributo(self):
-            # Obtener el nombre de la tabla actualmente seleccionada
-            nombre_tabla_actual = self.tabWidget.tabText(self.tabWidget.currentIndex()).strip()
+        nombre_tabla_actual = self.tabWidget.tabText(self.tabWidget.currentIndex()).strip()
+        nombre_atributo = self.le_NTupla.text().strip()
+        tipo_dato = self.cbox_tiposdatos.currentText().strip()
 
-            # Obtener el nombre del nuevo atributo desde le_NTupla
-            nombre_atributo = self.le_NTupla.text().strip()
+        # Considerar los detalles adicionales según el tipo de dato seleccionado
+        if tipo_dato in ["TINYINT", "SMALLINT", "MEDIUMINT", "INT", "INTEGER", "BIGINT", "CHAR", "VARCHAR"]:
+            longitud = self.spinBox_atributo.value()
+            tipo_dato += f"({longitud})"
+        elif tipo_dato in ["REAL", "DOUBLE", "FLOAT", "DECIMAL", "NUMERIC"]:
+            longitud = self.spinBox_atributo.value()
+            decimales = self.decimales_input.text().strip()
+            tipo_dato += f"({longitud},{decimales})"
+        elif tipo_dato == "ENUM" or tipo_dato == "SET":
+            valores = self.valores_input.text().strip()
+            tipo_dato += f"({valores})"
 
-            if not nombre_tabla_actual or not nombre_atributo:
-                self.mostrar_mensaje_emergente(
-                    "Por favor, asegúrese de que hay una tabla seleccionada y de que ha ingresado el nombre del atributo.")
-                return
+        consulta = f"ALTER TABLE `{nombre_tabla_actual}` ADD {nombre_atributo} {tipo_dato}"
 
-            # Aquí, puedes construir tu consulta para agregar el atributo. Por simplicidad, solo agregaré una columna de tipo TEXT.
-            consulta = f"ALTER TABLE `{nombre_tabla_actual}` ADD {nombre_atributo} TEXT"
+        try:
+            self.cursor.execute(consulta)
+            self.conn.commit()
+            self.mostrar_mensaje_emergente("Atributo añadido con éxito.")
+        except Exception as e:
+            self.mostrar_mensaje_emergente(f"Error al añadir el atributo: {str(e)}")
 
-            try:
-                self.cursor.execute(consulta)
-                self.conn.commit()
-                self.mostrar_mensaje_emergente("Atributo añadido con éxito.")
-            except Exception as e:
-                self.mostrar_mensaje_emergente(f"Error al añadir el atributo: {str(e)}")
+    def cargar_esquemas_disponibles(self):
+        # Suponiendo que tienes una variable de instancia que almacena el DBMS actual
+        dbms = self.dbms
+
+        # Determinar la consulta adecuada según el DBMS
+        if dbms == 'SQL Server' or dbms == 'SQL Server (Old)':
+            query = "SELECT schema_name FROM information_schema.schemata"
+        elif dbms == 'MySQL':
+            query = "SHOW SCHEMAS"
+        else:
+            # Consulta genérica como fallback
+            query = "SELECT schema_name FROM information_schema.schemata"
+
+        if query:
+            self.cursor.execute(query)
+            esquemas = self.cursor.fetchall()
+
+            # Limpiar el combobox
+            self.cbox_Esque.clear()
+
+            for esquema in esquemas:
+                self.cbox_Esque.addItem(esquema[0])
+        else:
+            print(f"No se pudo determinar una consulta para el DBMS: {dbms}")
 
     def crear_esquema(self):
         esquema = self.nombre_esqueCrea.text()
@@ -320,18 +484,64 @@ class MainApp(QMainWindow):
             self.mostrar_mensaje_emergente(f"Error al crear el esquema: {str(e)}")
 
     def cargar_esquema(self):
-        esquema_seleccionado = self.cbox_Esque.currentText()
-        # Implementar la funcionalidad aquí o dejar un comentario para hacerlo más tarde
-        pass
+            esquema_seleccionado = self.cbox_Esque.currentText()
+
+            if not esquema_seleccionado:
+                self.mostrar_mensaje_emergente("Por favor, seleccione un esquema.")
+                return
+
+            # Suponiendo que tienes una variable de instancia que almacena el DBMS actual
+            dbms = self.dbms
+
+            # Determinar la consulta adecuada según el DBMS
+            if dbms == 'SQL Server' or dbms == 'SQL Server (Old)':
+                query = f"SELECT table_name FROM information_schema.tables WHERE table_schema='{esquema_seleccionado}' AND table_type='BASE TABLE'"
+            elif dbms == 'MySQL':
+                query = f"SHOW TABLES FROM `{esquema_seleccionado}`"
+            else:
+                # Consulta genérica como fallback
+                query = f"SELECT table_name FROM information_schema.tables WHERE table_schema='{esquema_seleccionado}'"
+
+            if query:
+                self.cursor.execute(query)
+                tablas = self.cursor.fetchall()
+
+                # Limpiar las pestañas actuales
+                while self.tabWidget.count() > 0:
+                    self.tabWidget.removeTab(0)
+
+                for tabla in tablas:
+                    nombre_tabla = tabla[0]
+                    self.agregar_tabla(nombre_tabla)
+            else:
+                print(f"No se pudo determinar una consulta para el DBMS: {dbms}")
+
+            # Forzar una actualización de la pestaña/tabla actual
+            self.tabWidget.currentWidget().repaint()
 
     def borrar_atributo(self):
-        # Similar a crear_atributo, esta función debería mostrar un diálogo o ventana adicional donde el usuario pueda seleccionar el atributo a eliminar.
-        # Por simplicidad, asumiré que el usuario proporciona una consulta SQL completa para eliminar el atributo.
-        consulta = self.nombre_esqueCrea.text()  # Asumiendo que el usuario escribe la consulta aquí
+        # 1. Obtener el nombre de la tabla actualmente seleccionada
+        nombre_tabla_actual = self.tabWidget.tabText(self.tabWidget.currentIndex()).strip()
+
+        # 2. Obtener el nombre del atributo que el usuario desea eliminar desde el combobox `cbox_atributo`
+        nombre_atributo = self.cbox_atributo.currentText().strip()
+
+        if not nombre_tabla_actual or not nombre_atributo:
+            self.mostrar_mensaje_emergente(
+                "Por favor, asegúrese de que hay una tabla seleccionada y de que ha seleccionado el atributo a eliminar.")
+            return
+
+        # 3. Construir una consulta SQL para eliminar ese atributo de la tabla seleccionada
+        consulta = f"ALTER TABLE `{nombre_tabla_actual}` DROP COLUMN {nombre_atributo}"
+
         try:
+            # 4. Ejecutar la consulta SQL
             self.cursor.execute(consulta)
             self.conn.commit()
             self.mostrar_mensaje_emergente("Atributo eliminado con éxito.")
+
+            # 5. Actualizar el combobox `cbox_atributo` para reflejar los cambios
+            self.cargar_atributos_en_combobox(nombre_tabla_actual)
         except Exception as e:
             self.mostrar_mensaje_emergente(f"Error al eliminar el atributo: {str(e)}")
 
@@ -376,44 +586,80 @@ class MainApp(QMainWindow):
         # Suponiendo que tienes una variable de instancia que almacena el DBMS actual
         dbms = self.dbms
 
+        # Consulta para obtener las llaves primarias
+        if dbms == 'SQL Server' or dbms == 'SQL Server (Old)':
+            query_pk = f"""
+                SELECT COLUMN_NAME 
+                FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
+                WHERE TABLE_NAME = '{nombre_tabla}' AND CONSTRAINT_SCHEMA = 'dbo';
+            """
+        elif dbms in ['SQLite3', 'SQLite', 'SQLite UTF-8']:
+            query_pk = f"PRAGMA table_info({nombre_tabla})"
+        elif dbms == 'MySQL':
+            query_pk = f"""
+                SELECT COLUMN_NAME 
+                FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
+                WHERE TABLE_NAME = '{nombre_tabla}' AND CONSTRAINT_NAME = 'PRIMARY';
+            """
+        else:
+            query_pk = None
+
+        primary_keys = []
+        if query_pk:
+            cursor.execute(query_pk)
+            primary_keys_data = cursor.fetchall()
+            if dbms in ['SQLite3', 'SQLite', 'SQLite UTF-8']:
+                primary_keys = [row[1] for row in primary_keys_data if row[5] == 1]
+            else:
+                primary_keys = [row[0] for row in primary_keys_data]
+
         # Determinar la consulta adecuada según el DBMS
         if dbms == 'SQL Server' or dbms == 'SQL Server (Old)':
-            query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{nombre_tabla}'"
+            query = f"""
+                SELECT COLUMN_NAME, DATA_TYPE 
+                FROM INFORMATION_SCHEMA.COLUMNS 
+                WHERE TABLE_NAME = '{nombre_tabla}' AND TABLE_SCHEMA = 'dbo';
+            """
         elif dbms == 'Microsoft Access':
-            query = f"SELECT name FROM MSysObjects WHERE type=1 AND flags=0 AND name LIKE '{nombre_tabla}%'"
-        elif dbms == 'Microsoft Excel':
-            # Para Excel, las "columnas" son en realidad las primeras filas de una hoja.
-            # Podrías necesitar una lógica más compleja o una biblioteca adicional.
-            query = ""
-        elif dbms == 'Microsoft Access Text':
-            # Para archivos de texto, no hay una noción de "columnas" en el sentido tradicional.
-            # Podrías necesitar una lógica diferente para manejar esto.
-            query = ""
+            # Para Microsoft Access, obtener el tipo de dato puede ser más complicado.
+            # Esta consulta es una suposición y puede que necesites ajustarla.
+            query = f"SELECT name, type FROM MSysObjects WHERE type=1 AND flags=0 AND name LIKE '{nombre_tabla}%'"
         elif dbms == 'SQL Server Native Client RDA':
-            # Suponiendo que es similar a SQL Server
-            query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{nombre_tabla}'"
+            query = f"""
+                SELECT COLUMN_NAME, DATA_TYPE 
+                FROM INFORMATION_SCHEMA.COLUMNS 
+                WHERE TABLE_NAME = '{nombre_tabla}';
+            """
         elif dbms in ['SQLite3', 'SQLite', 'SQLite UTF-8']:
             query = f"PRAGMA table_info({nombre_tabla})"
+        elif dbms == 'MySQL':
+            query = f"""
+                SELECT COLUMN_NAME, DATA_TYPE 
+                FROM INFORMATION_SCHEMA.COLUMNS 
+                WHERE TABLE_NAME = '{nombre_tabla}';
+            """
         else:
             # Consulta genérica como fallback
-            query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{nombre_tabla}'"
+            query = f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{nombre_tabla}'"
 
-        if query:
+        try:
             cursor.execute(query)
             columnas = cursor.fetchall()
 
             if dbms in ['SQLite3', 'SQLite', 'SQLite UTF-8']:
-                nombres_columnas = [columna[1] for columna in columnas]
+                nombres_columnas = [f"{columna[1]} ({columna[2]}){' [PK]' if columna[1] in primary_keys else ''}" for
+                                    columna in columnas]
             else:
-                nombres_columnas = [columna[0] for columna in columnas]
+                nombres_columnas = [f"{columna[0]} ({columna[1]}){' [PK]' if columna[0] in primary_keys else ''}" for
+                                    columna in columnas]
 
             self.tablas[nombre_tabla] = {
                 "tabla_widget": tabla_widget,
                 "datos": [],
                 "columnas": nombres_columnas
             }
-        else:
-            print(f"No se pudo determinar una consulta para el DBMS: {dbms}")
+        except Exception as e:
+            print(f"No se pudo determinar una consulta para el DBMS: {dbms}. Error: {str(e)}")
 
     def mostrar_datos_tabla(self, nombre_tabla):
         cursor = self.cursor
