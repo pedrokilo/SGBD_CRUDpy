@@ -1,0 +1,528 @@
+import sys
+import pyodbc
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QTableWidget, QAbstractItemView, QTableWidgetItem, \
+    QVBoxLayout, QWidget, QLineEdit
+from PyQt5.uic import loadUi
+import traceback
+
+
+class App(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        loadUi("interfaz_ingreso.ui", self)  # Carga el archivo de diseño
+        # Ocultar el texto del QLineEdit de la contraseña
+        self.le_Contra.setEchoMode(QLineEdit.Password)
+        # Conectar el botón "CONECTAR" a una función
+        self.btn_conectar.clicked.connect(self.conectar_db)
+
+    def conectar_db(self):
+        usuario = self.le_User.text()
+        contrasena = self.le_Contra.text()
+        dsn_name = self.le_Dns.text()  # Usamos el QLineEdit le_Dns para obtener el nombre del DSN
+        host = self.le_Host.text()  # Obtener el host
+        port = self.le_Port.text()  # Obtener el puerto
+
+        # Si el DSN no requiere usuario y contraseña, puedes hacer una verificación y ajustar la cadena de conexión en consecuencia
+        if usuario and contrasena:
+            connection_string = f'DSN={dsn_name};UID={usuario};PWD={contrasena}'
+        else:
+            connection_string = f'DSN={dsn_name}'
+
+        # Si se proporcionan host y puerto, ajusta la cadena de conexión (esto es solo un ejemplo, puede variar según la base de datos y el controlador que estés utilizando)
+        if host and port:
+            connection_string = f"DRIVER={{ODBC Driver}};SERVER={host},{port};DATABASE=myDB;UID={usuario};PWD={contrasena}"
+
+        try:
+            conn = pyodbc.connect(connection_string)
+            self.mostrar_mensaje("Conexión exitosa")
+
+            # Si la conexión es exitosa, muestra la ventana principal
+            self.main_window = MainApp(conn)  # Aquí pasamos la conexión como argumento
+            self.main_window.show()
+
+            # Opcionalmente, cierra la ventana de conexión
+            self.close()
+
+        except Exception as e:
+            error_details = traceback.format_exc()
+            self.mostrar_mensaje(f"Error al conectar: {str(e)}\nDetalles:\n{error_details}")
+
+    def mostrar_mensaje(self, mensaje):
+        # Esta función muestra un mensaje emergente al usuario
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Information)
+        msg.setText(mensaje)
+        msg.setWindowTitle("Mensaje")
+        msg.exec_()
+
+class MainApp(QMainWindow):
+    def __init__(self, conn):
+        super().__init__()
+        self.conn = conn
+        self.cursor = self.conn.cursor()
+        loadUi("C:/Users/pedro/PycharmProjects/SGBD_CRUDpy/interfaz_sgbd.ui", self)
+        self.dbms = self.conn.getinfo(pyodbc.SQL_DBMS_NAME)
+        # Crear un diccionario para almacenar las tablas y sus datos
+        self.tablas = {}
+        # Inicializar el diccionario de filas agregadas
+        self.filas_agregadas = {}
+        # Agregar esto al inicio de la clase MainWindow
+        self.cambios_por_pestana = {}
+        # Configurar la pestaña/tabla inicial
+        self.cargar_tablas_desde_db()
+
+        # Configurar la pestaña/tabla inicial
+        self.tabWidget.currentChanged.connect(self.cambiar_tabla_actual)
+
+        # Configurar la selección de filas completas
+        for nombre_tabla in self.tablas:
+            tabla_widget = self.tablas[nombre_tabla]["tabla_widget"]
+            tabla_widget.setEditTriggers(QTableWidget.NoEditTriggers)
+            tabla_widget.setSelectionBehavior(QTableWidget.SelectRows)
+            tabla_widget.setSelectionMode(QAbstractItemView.SingleSelection)
+
+        # Variable para rastrear si la edición está habilitada
+        self.modificar_habilitado = False
+
+        self.conectar_senales()
+
+        # Conectar la señal currentChanged del QTabWidget a la función actualizar_vista_tabla_actual
+        self.tabWidget.currentChanged.connect(self.actualizar_vista_tabla_actual)
+
+        print(f"Nombre de tabla: {nombre_tabla}")  # Imprimir el nombre de la tabla
+        self.cursor.execute(f"SELECT * FROM `{nombre_tabla}`")
+
+    def closeEvent(self, event):
+        self.desconectar_bd()
+        event.accept()
+
+    def actualizar_fila_en_bd(self, nombre_tabla, fila_data, id_fila):
+        # Construir la consulta SQL para actualizar la fila
+        columnas = self.tablas[nombre_tabla]["columnas"]
+        set_clauses = ", ".join([f"{col} = ?" for col in columnas])
+        query = f"UPDATE `{nombre_tabla}` SET {set_clauses} WHERE `{columnas[0]}` = ?"
+
+        try:
+            # Ejecutar la consulta SQL
+            self.cursor.execute(query, (*fila_data, id_fila))
+            self.conn.commit()
+        except Exception as e:
+            self.mostrar_mensaje_emergente(f"Error al actualizar fila en {nombre_tabla}: {str(e)}")
+
+    def conectar_senales(self):
+        # Conexiones para los botones de gestión de registros
+        self.AGREGARbtn.clicked.connect(self.gestionar_registro_crear)
+        self.ELIMINARbtn.clicked.connect(self.gestionar_registro_eliminar)
+        self.CANCELARbtn.clicked.connect(self.cancelar_modificacion)
+        self.ACEPTARbtn.clicked.connect(self.aceptar_modificacion)
+        self.MODIFICARbtn.clicked.connect(self.habilitar_modificacion)
+
+        # Conexiones para los botones de gestión de esquemas y tablas
+        self.btn_CrearEsque.clicked.connect(self.crear_esquema)
+        self.btn_CargarEsque.clicked.connect(self.cargar_esquema)
+        self.btn_CrearTabla.clicked.connect(self.crear_tabla)
+        self.btn_BorrarTabla.clicked.connect(self.borrar_tabla)
+
+        # Conexiones para los botones de gestión de atributos
+        self.btn_CrearAtri.clicked.connect(self.crear_atributo)
+        self.btn_BorrarAtri.clicked.connect(self.borrar_atributo)
+
+        # Conexiones para el cambio de pestaña/tabla
+        self.tabWidget.currentChanged.connect(self.cambiar_tabla_actual)
+        self.tabWidget.currentChanged.connect(self.actualizar_vista_tabla_actual)
+
+    def desconectar_bd(self):
+        # Solo necesitas hacer commit y cerrar la conexión
+        if hasattr(self, 'conn') and self.conn is not None:
+            self.conn.commit()
+            self.conn.close()
+            self.conn = None
+
+    def cargar_tablas_desde_db(self):
+
+        # Suponiendo que tienes una variable de instancia que almacena el DBMS actual
+        dbms = self.dbms
+
+        # Determinar la consulta adecuada según el DBMS
+        if dbms == 'SQL Server' or dbms == 'SQL Server (Old)':
+            query = "SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE'"
+        elif dbms == 'Microsoft Access':
+            query = "SELECT name FROM MSysObjects WHERE type=1 AND flags=0"
+        elif dbms == 'SQL Server Native Client RDA':
+            # Suponiendo que es similar a SQL Server
+            query = "SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE'"
+        elif dbms in ['SQLite3', 'SQLite', 'SQLite UTF-8']:
+            query = "SELECT name FROM sqlite_master WHERE type='table'"
+        elif dbms == 'MySQL':
+            query = "SHOW TABLES"
+        else:
+            # Consulta genérica como fallback
+            query = "SELECT table_name FROM information_schema.tables"
+
+        if query:
+            self.cursor.execute(query)
+            tablas = self.cursor.fetchall()
+
+            while self.tabWidget.count() > 0:
+                self.tabWidget.removeTab(0)
+
+            for tabla in tablas:
+                nombre_tabla = tabla[0]
+                self.agregar_tabla(nombre_tabla)
+        else:
+            print(f"No se pudo determinar una consulta para el DBMS: {dbms}")
+
+    # Forzar una actualización de la pestaña/tabla actual
+        self.tabWidget.currentWidget().repaint()
+
+    def cancelar_modificacion(self):
+        # Esta función se llama cuando se hace clic en el botón "CANCELARbtn"
+        if self.modificar_habilitado:
+            self.mostrar_mensaje_emergente("La acción de modificar ha sido desactivada")
+            self.modificar_habilitado = False
+
+            # Eliminar las filas que se agregaron durante la modificación
+            if self.tabWidget.currentWidget() in self.filas_agregadas:
+                tabla_widget = self.tabWidget.currentWidget()
+                filas_a_eliminar = self.filas_agregadas[self.tabWidget.currentWidget()]
+                for fila in filas_a_eliminar:
+                    tabla_widget.removeRow(fila)
+                del self.filas_agregadas[self.tabWidget.currentWidget()]
+
+        else:
+            self.mostrar_mensaje_emergente("La acción de modificar no esta activada")
+
+    def actualizar_vista_tabla_actual(self, index):
+        # Obtener el nombre de la tabla actual basado en el índice de la pestaña
+        nombre_tabla_actual = self.tabWidget.tabText(index)
+
+        # Actualizar la vista de la tabla (esto es solo un ejemplo, puedes agregar más funcionalidad)
+        self.mostrar_datos_tabla(nombre_tabla_actual)
+
+        # Si necesitas más funcionalidad, agrégala aquí
+
+    def aceptar_modificacion(self):
+        if self.modificar_habilitado:
+            index = self.tabWidget.currentIndex()
+            nombre_tabla_actual = self.tabWidget.tabText(index)
+
+            if nombre_tabla_actual:
+                tabla_info = self.tablas[nombre_tabla_actual]
+                tabla_widget = tabla_info["tabla_widget"]
+
+                for fila_idx in range(tabla_widget.rowCount()):
+                    fila_data = []
+                    for columna_idx in range(tabla_widget.columnCount()):
+                        item = tabla_widget.item(fila_idx, columna_idx)
+                        fila_data.append(item.text())
+
+                    # Comprobando si la fila es nueva o es una fila existente
+                    if fila_idx < len(tabla_info["datos"]):
+                        # Fila existente, actualizamos
+                        id_fila = tabla_info["datos"][fila_idx][0]
+                        self.actualizar_fila_en_bd(nombre_tabla_actual, fila_data, id_fila)
+                    else:
+                        # Nueva fila, insertamos
+                        self.insertar_fila_en_bd(nombre_tabla_actual, fila_data)
+
+                self.desactivar_edicion_celdas()
+
+                mensaje = f"Cambios aplicados en la tabla {nombre_tabla_actual}"
+                self.mostrar_mensaje_emergente(mensaje)
+                print(mensaje)
+
+                self.modificar_habilitado = False
+                self.cargar_tablas_desde_db()
+        else:
+            self.mostrar_mensaje_emergente("La acción de modificar no esta activada")
+
+    def habilitar_modificacion(self):
+        # Esta función se llama cuando se hace clic en el botón "MODIFICARbtn"
+        self.modificar_habilitado = True
+        self.mostrar_mensaje_emergente("La acción de modificar ha sido activada")
+
+        # Obtener la pestaña actual
+        tabla_widget = self.tabWidget.currentWidget()
+
+        # Verificar que sea un QWidget y contenga una QTableWidget
+        if isinstance(tabla_widget, QWidget):
+            tabla = tabla_widget.findChild(QTableWidget)
+
+            # Verificar que se haya encontrado la QTableWidget
+            if tabla is not None and isinstance(tabla, QTableWidget):
+                # Habilitar la edición de celdas en la tabla actual
+                tabla.setEditTriggers(QTableWidget.DoubleClicked)
+                for fila_idx in range(tabla.rowCount()):
+                    for columna_idx in range(tabla.columnCount()):
+                        item = tabla.item(fila_idx, columna_idx)
+                        item.setFlags(item.flags() | Qt.ItemIsEditable)
+            else:
+                print("No se encontró la QTableWidget en la pestaña actual.")
+        else:
+            print("La pestaña actual no es un QWidget.")
+
+    def crear_tabla(self):
+            nombre_tabla = self.le_NTabla.text().strip()  # Obtener el nombre de la tabla
+            if not nombre_tabla:
+                self.mostrar_mensaje_emergente("Por favor, ingrese un nombre para la tabla.")
+                return
+
+            # Aquí, puedes construir tu consulta para crear la tabla. Por simplicidad, solo crearé una tabla con una columna ID.
+            consulta = f"CREATE TABLE `{nombre_tabla}` (ID INT PRIMARY KEY)"
+
+            try:
+                self.cursor.execute(consulta)
+                self.conn.commit()
+                self.mostrar_mensaje_emergente("Tabla creada con éxito.")
+            except Exception as e:
+                self.mostrar_mensaje_emergente(f"Error al crear la tabla: {str(e)}")
+
+    def borrar_tabla(self):
+        tabla_seleccionada = self.tabWidget.tabText(self.tabWidget.currentIndex())
+        try:
+            self.cursor.execute(f"DROP TABLE `{tabla_seleccionada}`")
+            self.conn.commit()
+            self.mostrar_mensaje_emergente(f"Tabla {tabla_seleccionada} eliminada con éxito.")
+        except Exception as e:
+            self.mostrar_mensaje_emergente(f"Error al eliminar la tabla: {str(e)}")
+
+    def crear_atributo(self):
+            # Obtener el nombre de la tabla actualmente seleccionada
+            nombre_tabla_actual = self.tabWidget.tabText(self.tabWidget.currentIndex()).strip()
+
+            # Obtener el nombre del nuevo atributo desde le_NTupla
+            nombre_atributo = self.le_NTupla.text().strip()
+
+            if not nombre_tabla_actual or not nombre_atributo:
+                self.mostrar_mensaje_emergente(
+                    "Por favor, asegúrese de que hay una tabla seleccionada y de que ha ingresado el nombre del atributo.")
+                return
+
+            # Aquí, puedes construir tu consulta para agregar el atributo. Por simplicidad, solo agregaré una columna de tipo TEXT.
+            consulta = f"ALTER TABLE `{nombre_tabla_actual}` ADD {nombre_atributo} TEXT"
+
+            try:
+                self.cursor.execute(consulta)
+                self.conn.commit()
+                self.mostrar_mensaje_emergente("Atributo añadido con éxito.")
+            except Exception as e:
+                self.mostrar_mensaje_emergente(f"Error al añadir el atributo: {str(e)}")
+
+    def crear_esquema(self):
+        esquema = self.nombre_esqueCrea.text()
+        try:
+            self.cursor.execute(f"CREATE SCHEMA `{esquema}`")
+            self.conn.commit()
+            self.cbox_Esque.addItem(esquema)  # Añadir el nuevo esquema al combobox
+            self.mostrar_mensaje_emergente(f"Esquema {esquema} creado con éxito.")
+        except Exception as e:
+            self.mostrar_mensaje_emergente(f"Error al crear el esquema: {str(e)}")
+
+    def cargar_esquema(self):
+        esquema_seleccionado = self.cbox_Esque.currentText()
+        # Implementar la funcionalidad aquí o dejar un comentario para hacerlo más tarde
+        pass
+
+    def borrar_atributo(self):
+        # Similar a crear_atributo, esta función debería mostrar un diálogo o ventana adicional donde el usuario pueda seleccionar el atributo a eliminar.
+        # Por simplicidad, asumiré que el usuario proporciona una consulta SQL completa para eliminar el atributo.
+        consulta = self.nombre_esqueCrea.text()  # Asumiendo que el usuario escribe la consulta aquí
+        try:
+            self.cursor.execute(consulta)
+            self.conn.commit()
+            self.mostrar_mensaje_emergente("Atributo eliminado con éxito.")
+        except Exception as e:
+            self.mostrar_mensaje_emergente(f"Error al eliminar el atributo: {str(e)}")
+
+    def desactivar_edicion_celdas(self):
+        # Obtener la pestaña actual
+        tabla_widget = self.tabWidget.currentWidget()
+
+        # Verificar que sea un QWidget y contenga una QTableWidget
+        if isinstance(tabla_widget, QWidget):
+            tabla = tabla_widget.findChild(QTableWidget)
+
+            # Verificar que se haya encontrado la QTableWidget
+            if tabla is not None and isinstance(tabla, QTableWidget):
+                # Deshabilitar la edición de celdas en la tabla actual
+                tabla.setEditTriggers(QTableWidget.NoEditTriggers)
+                for fila_idx in range(tabla.rowCount()):
+                    for columna_idx in range(tabla.columnCount()):
+                        item = tabla.item(fila_idx, columna_idx)
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            else:
+                print("No se encontró la QTableWidget en la pestaña actual.")
+        else:
+            print("La pestaña actual no es un QWidget.")
+
+    def agregar_tabla(self, nombre_tabla):
+        nueva_tab = QWidget()
+        self.tabWidget.addTab(nueva_tab, nombre_tabla)
+
+        layout = QVBoxLayout()
+        nueva_tab.setLayout(layout)
+
+        tabla_widget = QTableWidget()
+        layout.addWidget(tabla_widget)
+
+        # Configurar la selección de filas completas
+        tabla_widget.setSelectionBehavior(QTableWidget.SelectRows)
+        tabla_widget.setSelectionMode(QAbstractItemView.SingleSelection)
+
+        # Obtener los nombres de las columnas de la tabla desde la base de datos y asignarlos a 'columnas'
+        cursor = self.cursor
+
+        # Suponiendo que tienes una variable de instancia que almacena el DBMS actual
+        dbms = self.dbms
+
+        # Determinar la consulta adecuada según el DBMS
+        if dbms == 'SQL Server' or dbms == 'SQL Server (Old)':
+            query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{nombre_tabla}'"
+        elif dbms == 'Microsoft Access':
+            query = f"SELECT name FROM MSysObjects WHERE type=1 AND flags=0 AND name LIKE '{nombre_tabla}%'"
+        elif dbms == 'Microsoft Excel':
+            # Para Excel, las "columnas" son en realidad las primeras filas de una hoja.
+            # Podrías necesitar una lógica más compleja o una biblioteca adicional.
+            query = ""
+        elif dbms == 'Microsoft Access Text':
+            # Para archivos de texto, no hay una noción de "columnas" en el sentido tradicional.
+            # Podrías necesitar una lógica diferente para manejar esto.
+            query = ""
+        elif dbms == 'SQL Server Native Client RDA':
+            # Suponiendo que es similar a SQL Server
+            query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{nombre_tabla}'"
+        elif dbms in ['SQLite3', 'SQLite', 'SQLite UTF-8']:
+            query = f"PRAGMA table_info({nombre_tabla})"
+        else:
+            # Consulta genérica como fallback
+            query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{nombre_tabla}'"
+
+        if query:
+            cursor.execute(query)
+            columnas = cursor.fetchall()
+
+            if dbms in ['SQLite3', 'SQLite', 'SQLite UTF-8']:
+                nombres_columnas = [columna[1] for columna in columnas]
+            else:
+                nombres_columnas = [columna[0] for columna in columnas]
+
+            self.tablas[nombre_tabla] = {
+                "tabla_widget": tabla_widget,
+                "datos": [],
+                "columnas": nombres_columnas
+            }
+        else:
+            print(f"No se pudo determinar una consulta para el DBMS: {dbms}")
+
+    def mostrar_datos_tabla(self, nombre_tabla):
+        cursor = self.cursor
+        self.cursor.execute(f"SELECT * FROM `{nombre_tabla}`")
+        datos = cursor.fetchall()
+
+        tabla_info = self.tablas[nombre_tabla]
+        tabla_widget = tabla_info["tabla_widget"]
+        tabla_widget.setColumnCount(len(tabla_info["columnas"]))
+        tabla_widget.setHorizontalHeaderLabels(tabla_info["columnas"])
+
+        tabla_info["datos"] = datos
+
+        tabla_widget.setRowCount(len(datos))
+
+        for fila_idx, fila in enumerate(datos):
+            for columna_idx, valor in enumerate(fila):
+                item = QTableWidgetItem(str(valor))
+                tabla_widget.setItem(fila_idx, columna_idx, item)
+
+    def cambiar_tabla_actual(self, index):
+        nombre_tabla_actual = self.tabWidget.tabText(index)
+        self.mostrar_datos_tabla(nombre_tabla_actual)
+
+    def gestionar_registro_crear(self):
+        if self.modificar_habilitado:
+            index = self.tabWidget.currentIndex()
+            nombre_tabla_actual = self.tabWidget.tabText(index)
+
+            if nombre_tabla_actual:
+                tabla_info = self.tablas[nombre_tabla_actual]
+                tabla_widget = tabla_info["tabla_widget"]
+
+                num_columnas = tabla_widget.columnCount()
+                nueva_fila = ["" for _ in range(num_columnas)]
+
+                fila_actual = tabla_widget.rowCount()
+                tabla_widget.setRowCount(fila_actual + 1)
+
+                for columna_idx, valor in enumerate(nueva_fila):
+                    item = QTableWidgetItem(str(valor))
+                    item.setFlags(item.flags() | Qt.ItemIsEditable)
+                    tabla_widget.setItem(fila_actual, columna_idx, item)
+
+                if tabla_widget not in self.filas_agregadas:
+                    self.filas_agregadas[tabla_widget] = []
+                self.filas_agregadas[tabla_widget].append(fila_actual)
+
+                print("Fila en blanco creada y habilitada para edición en la tabla actual en la pestaña/tab",
+                      nombre_tabla_actual)
+        else:
+            self.mostrar_mensaje_emergente("La modificación no está habilitada, no se agregará ninguna fila.")
+
+    def gestionar_registro_eliminar(self):
+        if self.modificar_habilitado:
+            tabla_widget = self.tabWidget.currentWidget()
+            if tabla_widget is not None:
+                tabla = tabla_widget.findChild(QTableWidget)
+                if tabla is not None:
+                    selected_items = tabla.selectedItems()
+                    if selected_items:
+                        fila_a_eliminar = selected_items[0].row()
+                        id_fila = tabla.item(fila_a_eliminar, 0).text()
+                        index = self.tabWidget.currentIndex()
+                        nombre_tabla_actual = self.tabWidget.tabText(index)
+                        self.eliminar_fila_en_bd(nombre_tabla_actual, id_fila)
+                        tabla.removeRow(fila_a_eliminar)
+                        print("Fila eliminada.")
+                    else:
+                        print("No hay filas seleccionadas para eliminar.")
+                else:
+                    print("No se encontró la QTableWidget en la pestaña actual.")
+            else:
+                print("El widget de la pestaña actual no existe.")
+        else:
+            self.mostrar_mensaje_emergente("No se puede eliminar filas sin habilitar la modificación.")
+
+    def insertar_fila_en_bd(self, nombre_tabla, fila_data):
+        # Construye una consulta SQL para insertar datos en la tabla
+        placeholders = ', '.join(['?'] * len(fila_data))
+        columns = ', '.join(self.tablas[nombre_tabla]["columnas"])
+        query = f"INSERT INTO `{nombre_tabla}` ({columns}) VALUES ({placeholders})"
+
+        try:
+            self.cursor.execute(query, fila_data)
+            self.conn.commit()
+        except Exception as e:
+            self.mostrar_mensaje_emergente(f"Error al insertar fila en {nombre_tabla}: {str(e)}")
+
+    def eliminar_fila_en_bd(self, nombre_tabla, id_fila):
+        columnas = self.tablas[nombre_tabla]["columnas"]
+        query = f"DELETE FROM `{nombre_tabla}` WHERE {columnas[0]} = ?"
+        try:
+            self.cursor.execute(query, (id_fila,))
+            self.conn.commit()
+        except Exception as e:
+            self.mostrar_mensaje_emergente(f"Error al eliminar fila en {nombre_tabla}: {str(e)}")
+
+    def mostrar_mensaje_emergente(self, mensaje):
+        # Muestra un mensaje emergente con el mensaje dado
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Information)
+        msg.setText(mensaje)
+        msg.setWindowTitle("Mensaje")
+        msg.exec_()
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = App()
+    window.show()
+    sys.exit(app.exec_())
