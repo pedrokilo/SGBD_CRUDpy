@@ -9,7 +9,7 @@ import traceback
 class App(QMainWindow):
     def __init__(self):
         super().__init__()
-        loadUi("interfaz_ingreso.ui", self)  # Carga el archivo de diseño
+        loadUi("C:/Users/pedro/PycharmProjects/SGBD_CRUDpy/SGBD_OBDC/interfaz_ingreso.ui", self)  # Carga el archivo de diseño
         # Ocultar el texto del QLineEdit de la contraseña
         self.le_Contra.setEchoMode(QLineEdit.Password)
         # Conectar el botón "CONECTAR" a una función
@@ -31,7 +31,6 @@ class App(QMainWindow):
         # Si se proporcionan host y puerto, ajusta la cadena de conexión (esto es solo un ejemplo, puede variar según la base de datos y el controlador que estés utilizando)
         if host and port:
             connection_string = f"DRIVER={{ODBC Driver}};SERVER={host},{port};DATABASE=myDB;UID={usuario};PWD={contrasena}"
-
         try:
             conn = pyodbc.connect(connection_string)
             self.mostrar_mensaje("Conexión exitosa")
