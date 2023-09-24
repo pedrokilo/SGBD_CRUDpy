@@ -57,43 +57,43 @@ class App(QMainWindow):
 class MainApp(QMainWindow):
     def __init__(self, conn):
         super().__init__()
+        # Establecer la conexión y cargar la UI
         self.conn = conn
         self.cursor = self.conn.cursor()
         loadUi("C:/Users/pedro/PycharmProjects/SGBD_CRUDpy/interfaz_sgbd.ui", self)
         self.dbms = self.conn.getinfo(pyodbc.SQL_DBMS_NAME)
-        # Crear un diccionario para almacenar las tablas y sus datos
+        
+        # Crear diccionarios para almacenar las tablas, datos y filas agregadas
         self.tablas = {}
-        # Inicializar el diccionario de filas agregadas
         self.filas_agregadas = {}
+        
         # Configurar la pestaña/tabla inicial
         self.cargar_tablas_desde_db()
-        self.cargar_esquemas_disponibles()
-
-        # Configurar la pestaña/tabla inicial
-        self.tabWidget.currentChanged.connect(self.cambiar_tabla_actual)
-
-        # Configurar la selección de filas completas
+        
+        # Configurar la selección de filas completas para cada tabla
         for nombre_tabla in self.tablas:
             tabla_widget = self.tablas[nombre_tabla]["tabla_widget"]
             tabla_widget.setEditTriggers(QTableWidget.NoEditTriggers)
             tabla_widget.setSelectionBehavior(QTableWidget.SelectRows)
             tabla_widget.setSelectionMode(QAbstractItemView.SingleSelection)
-
+        
+        # Configurar los ComboBox y otras herramientas
+        self.cargar_esquemas_disponibles()
         self.cargar_tipos_datos()
-
-        self.tabWidget.currentChanged.connect(self.actualizar_combobox_atributos)
-        self.tabWidget.currentChanged.connect(self.actualizar_combobox_llaves)
         self.cbox_tiposdatos.currentIndexChanged.connect(self.mostrar_spinbox_si_es_necesario)
 
-        # Variable para rastrear si la edición está habilitada
-        self.modificar_habilitado = False
-
+        # Conectar señales a sus slots correspondientes
         self.conectar_senales()
-
-        # Conectar la señal currentChanged del QTabWidget a la función actualizar_vista_tabla_actual
+        self.tabWidget.currentChanged.connect(self.cambiar_tabla_actual)
+        self.tabWidget.currentChanged.connect(self.actualizar_combobox_atributos)
+        self.tabWidget.currentChanged.connect(self.actualizar_combobox_llaves)
         self.tabWidget.currentChanged.connect(self.actualizar_vista_tabla_actual)
-
-        print(f"Nombre de tabla: {nombre_tabla}")  # Imprimir el nombre de la tabla
+        
+        # Inicializar variables
+        self.modificar_habilitado = False
+        
+        # Información de depuración (se puede remover en producción)
+        print(f"Nombre de tabla: {nombre_tabla}")
         self.cursor.execute(f"SELECT * FROM `{nombre_tabla}`")
 
     def cargar_tablas_desde_db(self):
@@ -107,14 +107,13 @@ class MainApp(QMainWindow):
         elif dbms == 'Microsoft Access':
             query = "SELECT name FROM MSysObjects WHERE type=1 AND flags=0"
         elif dbms == 'SQL Server Native Client RDA':
-            # Suponiendo que es similar a SQL Server
             query = "SELECT table_name FROM information_schema.tables WHERE table_type='BASE TABLE'"
         elif dbms in ['SQLite3', 'SQLite', 'SQLite UTF-8']:
             query = "SELECT name FROM sqlite_master WHERE type='table'"
         elif dbms == 'MySQL':
             query = "SHOW TABLES"
+            # Podrías hacer un "USE [nombre_db]" antes si no has seleccionado la base de datos previamente
         else:
-            # Consulta genérica como fallback
             query = "SELECT table_name FROM information_schema.tables"
 
         if query:
@@ -127,11 +126,36 @@ class MainApp(QMainWindow):
             for tabla in tablas:
                 nombre_tabla = tabla[0]
                 self.agregar_tabla(nombre_tabla)
-        else:
-            print(f"No se pudo determinar una consulta para el DBMS: {dbms}")
 
-    # Forzar una actualización de la pestaña/tabla actual
+                # Para MySQL, carga los datos de cada tabla después de agregarla:
+                if dbms == 'MySQL':
+                    self.cargar_datos_tabla_mysql(nombre_tabla)
+
+        # Forzar una actualización de la pestaña/tabla actual
         self.tabWidget.currentWidget().repaint()
+
+    def cargar_datos_tabla_mysql(self, nombre_tabla):
+        # Obtenemos todos los datos de la tabla
+        query_data = f"SELECT * FROM `{nombre_tabla}`"
+        self.cursor.execute(query_data)
+        datos = self.cursor.fetchall()
+        columnas = [column[0] for column in self.cursor.description]
+
+        # Encuentra el QTableWidget correspondiente
+        tabla_widget = self.tablas[nombre_tabla]['tabla_widget']
+
+        # Establece la cantidad de filas y columnas en el widget
+        tabla_widget.setRowCount(len(datos))
+        tabla_widget.setColumnCount(len(columnas))
+
+        # Establece los nombres de las columnas
+        tabla_widget.setHorizontalHeaderLabels(columnas)
+
+        # Llenar la tabla con datos
+        for i, fila in enumerate(datos):
+            for j, valor in enumerate(fila):
+                celda = QTableWidgetItem(str(valor))
+                tabla_widget.setItem(i, j, celda)
 
     def desconectar_bd(self):
         # Solo necesitas hacer commit y cerrar la conexión
@@ -155,7 +179,8 @@ class MainApp(QMainWindow):
             self.cursor.execute(query, (*fila_data, id_fila))
             self.conn.commit()
         except Exception as e:
-            self.mostrar_mensaje_emergente(f"Error al actualizar fila en {nombre_tabla}: {str(e)}")
+            error_details = traceback.format_exc()
+            self.mostrar_mensaje_emergente(f"Error al actualizar fila en {nombre_tabla}:\n{error_details}")
 
     def actualizar_vista_tabla_actual(self, index):
         # Obtener el nombre de la tabla actual basado en el índice de la pestaña
@@ -465,7 +490,8 @@ class MainApp(QMainWindow):
             self.cbox_Esque.addItem(esquema)  # Añadir el nuevo esquema al combobox
             self.mostrar_mensaje_emergente(f"Esquema {esquema} creado con éxito.")
         except Exception as e:
-            self.mostrar_mensaje_emergente(f"Error al crear el esquema: {str(e)}")
+            error_details = traceback.format_exc()
+            self.mostrar_mensaje_emergente(f"Error al crear el esquema:\n{error_details}")
 
     def cargar_esquema(self):
             esquema_seleccionado = self.cbox_Esque.currentText()
@@ -542,7 +568,8 @@ class MainApp(QMainWindow):
                 self.conn.commit()
                 self.mostrar_mensaje_emergente("Tabla creada con éxito.")
             except Exception as e:
-                self.mostrar_mensaje_emergente(f"Error al crear la tabla: {str(e)}")
+                error_details = traceback.format_exc()
+                self.mostrar_mensaje_emergente(f"Error al crear la tabla: \n{error_details}")
 
     def borrar_tabla(self):
         tabla_seleccionada = self.tabWidget.tabText(self.tabWidget.currentIndex())
@@ -551,7 +578,8 @@ class MainApp(QMainWindow):
             self.conn.commit()
             self.mostrar_mensaje_emergente(f"Tabla {tabla_seleccionada} eliminada con éxito.")
         except Exception as e:
-            self.mostrar_mensaje_emergente(f"Error al eliminar la tabla: {str(e)}")
+            error_details = traceback.format_exc()
+            self.mostrar_mensaje_emergente(f"Error al eliminar la tabla: \n{error_details}")
 
     def mostrar_datos_tabla(self, nombre_tabla):
         cursor = self.cursor
@@ -665,7 +693,8 @@ class MainApp(QMainWindow):
                 "columnas": nombres_columnas
             }
         except Exception as e:
-            print(f"No se pudo determinar una consulta para el DBMS: {dbms}. Error: {str(e)}")
+            error_details = traceback.format_exc()
+            self.mostrar_mensaje_emergente(f"No se pudo determinar una consulta para el DBMS: {dbms}. Error: \n{error_details}")
 
     def insertar_fila_en_bd(self, nombre_tabla, fila_data):
         # Construye una consulta SQL para insertar datos en la tabla
@@ -677,7 +706,8 @@ class MainApp(QMainWindow):
             self.cursor.execute(query, fila_data)
             self.conn.commit()
         except Exception as e:
-            self.mostrar_mensaje_emergente(f"Error al insertar fila en {nombre_tabla}: {str(e)}")
+            error_details = traceback.format_exc()
+            self.mostrar_mensaje_emergente(f"Error al insertar fila en {nombre_tabla}: \n{error_details}")
 
     def eliminar_fila_en_bd(self, nombre_tabla, id_fila):
         columnas = self.tablas[nombre_tabla]["columnas"]
@@ -686,7 +716,8 @@ class MainApp(QMainWindow):
             self.cursor.execute(query, (id_fila,))
             self.conn.commit()
         except Exception as e:
-            self.mostrar_mensaje_emergente(f"Error al eliminar fila en {nombre_tabla}: {str(e)}")
+            error_details = traceback.format_exc()
+            self.mostrar_mensaje_emergente(f"Error al eliminar fila en {nombre_tabla}: \n{error_details}")
 
     def crear_atributo(self):
         nombre_tabla_actual = self.tabWidget.tabText(self.tabWidget.currentIndex()).strip()
@@ -718,7 +749,8 @@ class MainApp(QMainWindow):
             self.conn.commit()
             self.mostrar_mensaje_emergente("Atributo añadido con éxito.")
         except Exception as e:
-            self.mostrar_mensaje_emergente(f"Error al añadir el atributo: {str(e)}")
+            error_details = traceback.format_exc()
+            self.mostrar_mensaje_emergente(f"Error al añadir el atributo: \n{error_details}")
 
     def borrar_atributo(self):
         # 1. Obtener el nombre de la tabla actualmente seleccionada
@@ -744,7 +776,8 @@ class MainApp(QMainWindow):
             # 5. Actualizar el combobox `cbox_atributo` para reflejar los cambios
             self.cargar_atributos_en_combobox(nombre_tabla_actual)
         except Exception as e:
-            self.mostrar_mensaje_emergente(f"Error al eliminar el atributo: {str(e)}")
+            error_details = traceback.format_exc()
+            self.mostrar_mensaje_emergente(f"Error al eliminar el atributo: \n{error_details}")
 
     def mostrar_spinbox_si_es_necesario(self, index):
         tipo_dato = self.cbox_tiposdatos.itemText(index)
