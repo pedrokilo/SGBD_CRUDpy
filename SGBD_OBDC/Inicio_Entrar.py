@@ -6,6 +6,9 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QTableWidget
 from PyQt5.uic import loadUi
 import traceback
 
+from PyQt5.uic.properties import QtWidgets
+
+
 class App(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -95,6 +98,29 @@ class MainApp(QMainWindow):
         # Información de depuración (se puede remover en producción)
         print(f"Nombre de tabla: {nombre_tabla}")
         self.cursor.execute(f"SELECT * FROM `{nombre_tabla}`")
+
+    def ejecutar_sentencia_sql(self):
+        # Obtener la sentencia SQL del QLineEdit
+        sentencia_sql = self.le_sentenciasql.text()
+
+        # Conectar con la base de datos (ajusta tus parámetros de conexión)
+        try:
+            conexion = pyodbc.connect()
+
+            cursor = conexion.cursor()
+            cursor.execute(sentencia_sql)
+
+            # Si esperas resultados, por ejemplo, de un SELECT:
+            resultados = cursor.fetchall()
+            for resultado in resultados:
+                print(resultado)
+
+            conexion.close()
+
+        except pyodbc.Error as e:
+            QtWidgets.QMessageBox.critical(self, 'Error', f'Error al ejecutar SQL: {e}')
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, 'Error', f'Error desconocido: {e}')
 
     def cargar_tablas_desde_db(self):
 
@@ -316,6 +342,8 @@ class MainApp(QMainWindow):
         self.CANCELARbtn.clicked.connect(self.cancelar_modificacion)
         self.ACEPTARbtn.clicked.connect(self.aceptar_modificacion)
         self.MODIFICARbtn.clicked.connect(self.habilitar_modificacion)
+        # Conectar la señal clicked del botón btn_sentSQL al slot correspondiente
+        self.btn_sentSQL.clicked.connect(self.ejecutar_sentencia_sql)
 
         # Conexiones para los botones de gestión de esquemas y tablas
         self.btn_CrearEsque.clicked.connect(self.crear_esquema)
