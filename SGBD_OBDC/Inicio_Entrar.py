@@ -11,46 +11,58 @@ from PyQt5.uic.properties import QtWidgets
 
 class App(QMainWindow):
     def __init__(self):
+        """Constructor de la clase App que inicializa la interfaz de usuario."""
+
+        # Inicializar el QMainWindow
         super().__init__()
-        loadUi("C:/Users/pedro/PycharmProjects/SGBD_CRUDpy/SGBD_OBDC/interfaz_ingreso.ui", self)  # Carga el archivo de diseño
-        # Ocultar el texto del QLineEdit de la contraseña
+
+        # Cargar el diseño de la interfaz desde un archivo .ui
+        loadUi("C:/Users/pedro/PycharmProjects/SGBD_CRUDpy/SGBD_OBDC/interfaz_ingreso.ui", self)
+
+        # Configurar el campo de contraseña para ocultar el texto ingresado
         self.le_Contra.setEchoMode(QLineEdit.Password)
-        # Conectar el botón "CONECTAR" a una función
+
+        # Conectar el botón de conexión a la función que inicia el proceso de conexión a la DB
         self.btn_conectar.clicked.connect(self.conectar_db)
 
     def conectar_db(self):
+        """Intenta conectar a la base de datos usando la información proporcionada por el usuario."""
+
+        # Obtener los datos ingresados por el usuario
         usuario = self.le_User.text()
         contrasena = self.le_Contra.text()
-        dsn_name = self.le_Dns.text()  # Usamos el QLineEdit le_Dns para obtener el nombre del DSN
-        host = self.le_Host.text()  # Obtener el host
-        port = self.le_Port.text()  # Obtener el puerto
+        dsn_name = self.le_Dns.text()
+        host = self.le_Host.text()
+        port = self.le_Port.text()
 
-        # Si el DSN no requiere usuario y contraseña, puedes hacer una verificación y ajustar la cadena de conexión en consecuencia
+        # Construir la cadena de conexión basada en la información ingresada
         if usuario and contrasena:
             connection_string = f'DSN={dsn_name};UID={usuario};PWD={contrasena}'
         else:
             connection_string = f'DSN={dsn_name}'
 
-        # Si se proporcionan host y puerto, ajusta la cadena de conexión (esto es solo un ejemplo, puede variar según la base de datos y el controlador que estés utilizando)
         if host and port:
             connection_string = f"DRIVER={{ODBC Driver}};SERVER={host},{port};DATABASE=myDB;UID={usuario};PWD={contrasena}"
+
+        # Intentar establecer la conexión
         try:
             conn = pyodbc.connect(connection_string)
             self.mostrar_mensaje("Conexión exitosa")
 
-            # Si la conexión es exitosa, muestra la ventana principal
-            self.main_window = MainApp(conn)  # Aquí pasamos la conexión como argumento
+            # Mostrar la ventana principal si la conexión es exitosa
+            self.main_window = MainApp(conn)
             self.main_window.show()
 
-            # Opcionalmente, cierra la ventana de conexión
+            # Cerrar la ventana de conexión
             self.close()
-
         except Exception as e:
+            # Mostrar detalles del error si la conexión falla
             error_details = traceback.format_exc()
             self.mostrar_mensaje(f"Error al conectar: {str(e)}\nDetalles:\n{error_details}")
 
     def mostrar_mensaje(self, mensaje):
-        # Esta función muestra un mensaje emergente al usuario
+        """Muestra un mensaje emergente al usuario."""
+
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Information)
         msg.setText(mensaje)
@@ -59,49 +71,55 @@ class App(QMainWindow):
 
 class MainApp(QMainWindow):
     def __init__(self, conn):
+        """Constructor de la clase que inicializa la interfaz y configura la conexión."""
+        # Llamada al constructor de la clase padre (presumiblemente alguna clase de PyQt)
         super().__init__()
-        # Establecer la conexión y cargar la UI
+        # Establecer la conexión a la base de datos y preparar un cursor
         self.conn = conn
         self.cursor = self.conn.cursor()
+        # Cargar el diseño de la interfaz de usuario desde un archivo .ui
         loadUi("C:/Users/pedro/PycharmProjects/SGBD_CRUDpy/interfaz_sgbd.ui", self)
+        # Obtener el nombre del sistema de gestión de bases de datos (DBMS) conectado
         self.dbms = self.conn.getinfo(pyodbc.SQL_DBMS_NAME)
-        
-        # Crear diccionarios para almacenar las tablas, datos y filas agregadas
+        # Inicializar diccionarios para almacenar tablas, filas agregadas y datos
         self.tablas = {}
         self.filas_agregadas = {}
-        
-        # Configurar la pestaña/tabla inicial
+        # Cargar la estructura de tablas de la base de datos
         self.cargar_tablas_desde_db()
-        
-        # Configurar la selección de filas completas para cada tabla
+        # Configurar el comportamiento de selección de las tablas en la interfaz de usuario
         for nombre_tabla in self.tablas:
             tabla_widget = self.tablas[nombre_tabla]["tabla_widget"]
             tabla_widget.setEditTriggers(QTableWidget.NoEditTriggers)
             tabla_widget.setSelectionBehavior(QTableWidget.SelectRows)
             tabla_widget.setSelectionMode(QAbstractItemView.SingleSelection)
-        
-        # Configurar los ComboBox y otras herramientas
+
+        # Cargar los esquemas y tipos de datos disponibles en ComboBox y otras herramientas de UI
+        index_actual = self.tabWidget.currentIndex()
+        tabla_actual = self.tabWidget.tabText(index_actual)
+        self.mostrar_datos_tabla(tabla_actual)
+        self.actualizar_combobox_atributos(index_actual)
+        self.actualizar_combobox_llaves(index_actual)
         self.cargar_esquemas_disponibles()
         self.cargar_tipos_datos()
         self.cbox_tiposdatos.currentIndexChanged.connect(self.mostrar_spinbox_si_es_necesario)
 
-        # Conectar señales a sus slots correspondientes
+        # Conectar eventos (señales) a sus manejadores correspondientes (slots)
         self.conectar_senales()
         self.tabWidget.currentChanged.connect(self.cambiar_tabla_actual)
         self.tabWidget.currentChanged.connect(self.actualizar_combobox_atributos)
         self.tabWidget.currentChanged.connect(self.actualizar_combobox_llaves)
         self.tabWidget.currentChanged.connect(self.actualizar_vista_tabla_actual)
-        
-        # Inicializar variables
+
+        # Inicializar variables para controlar estados
         self.modificar_habilitado = False
-        
-        # Información de depuración (se puede remover en producción)
+
+        # Información de depuración (para desarrollo, no es necesario en producción)
         print(f"Nombre de tabla: {nombre_tabla}")
         self.cursor.execute(f"SELECT * FROM `{nombre_tabla}`")
 
     def ejecutar_sentencia_sql(self):
         # Obtener la sentencia SQL del QLineEdit
-        sentencia_sql = self.le_sentenciasql.text()
+        sentencia_sql = self.te_sentenciasql.text()
 
         # Conectar con la base de datos (ajusta tus parámetros de conexión)
         try:

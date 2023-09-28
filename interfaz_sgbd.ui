@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1728</width>
+    <width>1909</width>
     <height>674</height>
    </rect>
   </property>
@@ -697,7 +697,7 @@
      <rect>
       <x>1470</x>
       <y>60</y>
-      <width>241</width>
+      <width>421</width>
       <height>481</height>
      </rect>
     </property>
@@ -709,16 +709,16 @@
       <rect>
        <x>0</x>
        <y>0</y>
-       <width>239</width>
+       <width>419</width>
        <height>479</height>
       </rect>
      </property>
-     <widget class="QLineEdit" name="le_sentenciasql">
+     <widget class="QTextEdit" name="te_sentenciasql">
       <property name="geometry">
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>241</width>
+        <width>421</width>
         <height>481</height>
        </rect>
       </property>
@@ -741,8 +741,8 @@
    <widget class="QPushButton" name="btn_sentSQL">
     <property name="geometry">
      <rect>
-      <x>1490</x>
-      <y>560</y>
+      <x>1590</x>
+      <y>550</y>
       <width>181</width>
       <height>28</height>
      </rect>
@@ -757,7 +757,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1728</width>
+     <width>1909</width>
      <height>26</height>
     </rect>
    </property>
