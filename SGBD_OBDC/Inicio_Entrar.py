@@ -5,8 +5,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QTableWidget
     QVBoxLayout, QWidget, QLineEdit
 from PyQt5.uic import loadUi
 import traceback
-
-from PyQt5.uic.properties import QtWidgets
+from PyQt5 import QtWidgets
 
 
 class App(QMainWindow):
@@ -119,7 +118,7 @@ class MainApp(QMainWindow):
 
     def ejecutar_sentencia_sql(self):
         # Obtener la sentencia SQL del QLineEdit
-        sentencia_sql = self.te_sentenciasql.text()
+        sentencia_sql = self.te_sentenciasql.toPlainText()
 
         # Conectar con la base de datos (ajusta tus parámetros de conexión)
         try:
@@ -138,7 +137,7 @@ class MainApp(QMainWindow):
         except pyodbc.Error as e:
             QtWidgets.QMessageBox.critical(self, 'Error', f'Error al ejecutar SQL: {e}')
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, 'Error', f'Error desconocido: {e}')
+            QtWidgets.QMessageBox.critical(self, 'Error', f'{e}')
 
     def cargar_tablas_desde_db(self):
 
@@ -369,6 +368,9 @@ class MainApp(QMainWindow):
         self.btn_CrearTabla.clicked.connect(self.crear_tabla)
         self.btn_BorrarTabla.clicked.connect(self.borrar_tabla)
 
+        # Conexiones para los botones de gestión de tablas (ACTUALIZACION)
+        self.btn_actablas.clicked.connect(self.actualizar_tabla_con_boton)
+
         # Conexiones para los botones de gestión de atributos
         self.btn_CrearAtri.clicked.connect(self.crear_atributo)
         self.btn_BorrarAtri.clicked.connect(self.borrar_atributo)
@@ -481,6 +483,13 @@ class MainApp(QMainWindow):
                 self.cargar_tablas_desde_db()
         else:
             self.mostrar_mensaje_emergente("La acción de modificar no esta activada")
+
+    def actualizar_tabla_con_boton(self):
+        index_actual = self.tabWidget.currentIndex()
+        tabla_actual = self.tabWidget.tabText(index_actual)
+        self.mostrar_datos_tabla(tabla_actual)
+        self.actualizar_combobox_atributos(index_actual)
+        self.actualizar_combobox_llaves(index_actual)
 
     def habilitar_modificacion(self):
         # Esta función se llama cuando se hace clic en el botón "MODIFICARbtn"

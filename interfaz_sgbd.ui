@@ -679,19 +679,6 @@
      </rect>
     </property>
    </widget>
-   <widget class="QPushButton" name="btn_AgregarLlave">
-    <property name="geometry">
-     <rect>
-      <x>1230</x>
-      <y>340</y>
-      <width>93</width>
-      <height>28</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>AGREGAR</string>
-    </property>
-   </widget>
    <widget class="QScrollArea" name="scrollArea">
     <property name="geometry">
      <rect>
@@ -749,6 +736,19 @@
     </property>
     <property name="text">
      <string>Cargar sentencias SQL</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="btn_actablas">
+    <property name="geometry">
+     <rect>
+      <x>850</x>
+      <y>550</y>
+      <width>181</width>
+      <height>28</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>ACTUALIZAR TABLA VISIBLE</string>
     </property>
    </widget>
   </widget>
