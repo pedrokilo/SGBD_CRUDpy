@@ -73,10 +73,10 @@ class InterfazSgbd(QMainWindow):
         loadUi("C:/Users/pedro/OneDrive/Desktop/INTERFAZ/INTERFAZ DE BASE DE DATOS0.ui", self)
 
         # Instanciar las clases para manejar esquemas y tablas
-        self.esquema_db = EsquemaBaseDatos(self.conn)
-        self.tabla_esquema = TablasEsquema(self.conn)
+        self.esquema_db = EsquemaBaseDatos(self.conn, self.dsn_name)
+        self.tabla_esquema = TablasEsquema(self.conn, self.dsn_name)
         self.informacion_db = InformacionBaseDatos(conn)
-        self.sentencias_sql = SentenciasSQL(conn)
+        self.sentencias_sql = SentenciasSQL(self.dsn_name)
 
 
         # Establecer el nombre de la conexión como encabezado del TreeWidget
@@ -103,23 +103,26 @@ class InterfazSgbd(QMainWindow):
                 tabla_item.setText(0, tabla)
 
 class EsquemaBaseDatos:
-    def __init__(self, conn):
+    def __init__(self, conn, dsn_name):
         self.conn = conn
         self.cursor = self.conn.cursor()
+        self.sentencias_sql = SentenciasSQL(dsn_name)
 
     def obtener_esquemas(self):
         """Obtener una lista de esquemas de la base de datos"""
-        self.cursor.execute("SHOW DATABASES")
+        self.cursor.execute(self.sentencias_sql.mostrar_esquemas())
         return [row[0] for row in self.cursor.fetchall()]
 
 class TablasEsquema:
-    def __init__(self, conn):
+    def __init__(self, conn, dsn_name):
         self.conn = conn
         self.cursor = self.conn.cursor()
+        self.sentencias_sql = SentenciasSQL(dsn_name)
 
     def obtener_tablas_de_esquema(self, esquema):
         """Obtener una lista de tablas para un esquema específico"""
-        self.cursor.execute(f"SHOW TABLES FROM {esquema}")
+        query, param = SentenciasSQL.mostrar_tablas_de_esquema(esquema)
+        self.cursor.execute(query, param)
         return [row[0] for row in self.cursor.fetchall()]
 
 class InformacionBaseDatos:
@@ -128,10 +131,35 @@ class InformacionBaseDatos:
         self.cursor = self.conn.cursor()
 
 class SentenciasSQL:
-    def __init__(self, conn):
-        self.conn = conn
-        self.cursor = self.conn.cursor()
+    def __init__(self, driver_name):
+        self.driver_name = driver_name
 
+    def mostrar_esquemas(self):
+        if self.driver_name == 'SQL Server' or self.driver_name in ['SQL Server Native Client RDA 11.0', 'ODBC Driver 17 for SQL Server']:
+            return "SELECT name FROM sys.databases"
+        elif self.driver_name in ['Microsoft Access Driver (*.mdb, *.accdb)', 'Microsoft Excel Driver (*.xls, *.xlsx, *.xlsm, *.xlsb)', 'Microsoft Access Text Driver (*.txt, *.csv)']:
+            # Suponiendo que para Access y Excel las bases de datos son archivos, podrías tener una lógica diferente.
+            # Aquí solo es un ejemplo.
+            return "SELECT [name] FROM [some_system_table]"
+        elif self.driver_name in ['SQLite3 ODBC Driver', 'SQLite ODBC Driver', 'SQLite ODBC (UTF-8) Driver']:
+            return "SELECT name FROM sqlite_master WHERE type='table'"
+        elif self.driver_name in ['MySQL ODBC 8.1 ANSI Driver', 'MySQL ODBC 8.1 Unicode Driver']:
+            return "SHOW DATABASES"
+        else:
+            raise ValueError(f"No se soporta el driver: {self.driver_name}")
+
+    def mostrar_tablas_de_esquema(self, esquema):
+        if self.driver_name == 'SQL Server' or self.driver_name in ['SQL Server Native Client RDA 11.0', 'ODBC Driver 17 for SQL Server']:
+            return f"SELECT name FROM {esquema}.sys.tables"
+        elif self.driver_name in ['Microsoft Access Driver (*.mdb, *.accdb)', 'Microsoft Excel Driver (*.xls, *.xlsx, *.xlsm, *.xlsb)', 'Microsoft Access Text Driver (*.txt, *.csv)']:
+            # De nuevo, es solo un ejemplo.
+            return f"SELECT [name] FROM {esquema}.[some_system_table]"
+        elif self.driver_name in ['SQLite3 ODBC Driver', 'SQLite ODBC Driver', 'SQLite ODBC (UTF-8) Driver']:
+            return "SELECT name FROM sqlite_master WHERE type='table'"
+        elif self.driver_name in ['MySQL ODBC 8.1 ANSI Driver', 'MySQL ODBC 8.1 Unicode Driver']:
+            return f"SHOW TABLES FROM {esquema}"
+        else:
+            raise ValueError(f"No se soporta el driver: {self.driver_name}")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
