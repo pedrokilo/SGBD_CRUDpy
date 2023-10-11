@@ -14,7 +14,7 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QPushButton" name="pushButton_2">
+   <widget class="QPushButton" name="actualizar_todo">
     <property name="geometry">
      <rect>
       <x>20</x>
@@ -27,7 +27,7 @@
      <string>ACTUALIZAR / REMUESTREO</string>
     </property>
    </widget>
-   <widget class="QGroupBox" name="groupBox">
+   <widget class="QGroupBox" name="gbox_tablas">
     <property name="geometry">
      <rect>
       <x>260</x>
@@ -39,7 +39,7 @@
     <property name="title">
      <string>TABLAS DEL ESQUEMA</string>
     </property>
-    <widget class="QStackedWidget" name="stackedWidget_2">
+    <widget class="QStackedWidget" name="ventanas_tablas">
      <property name="geometry">
       <rect>
        <x>30</x>
@@ -51,8 +51,8 @@
      <property name="currentIndex">
       <number>0</number>
      </property>
-     <widget class="QWidget" name="page_3">
-      <widget class="QGroupBox" name="groupBox_3">
+     <widget class="QWidget" name="objetos_tablas">
+      <widget class="QGroupBox" name="gbox_objetos">
        <property name="geometry">
         <rect>
          <x>0</x>
@@ -64,7 +64,7 @@
        <property name="title">
         <string>OBJETOS</string>
        </property>
-       <widget class="QPushButton" name="pushButton_3">
+       <widget class="QPushButton" name="abrir_tabla">
         <property name="geometry">
          <rect>
           <x>10</x>
@@ -77,7 +77,7 @@
          <string>ABRIR</string>
         </property>
        </widget>
-       <widget class="QPushButton" name="pushButton_4">
+       <widget class="QPushButton" name="modificar_tabla">
         <property name="geometry">
          <rect>
           <x>120</x>
@@ -90,7 +90,7 @@
          <string>MODIFICAR</string>
         </property>
        </widget>
-       <widget class="QPushButton" name="pushButton_6">
+       <widget class="QPushButton" name="crear_tabla">
         <property name="geometry">
          <rect>
           <x>230</x>
@@ -103,7 +103,7 @@
          <string>CREAR</string>
         </property>
        </widget>
-       <widget class="QPushButton" name="pushButton_7">
+       <widget class="QPushButton" name="borrar_tabla">
         <property name="geometry">
          <rect>
           <x>340</x>
@@ -116,7 +116,7 @@
          <string>BORRAR</string>
         </property>
        </widget>
-       <widget class="QTabWidget" name="tabWidget">
+       <widget class="QTabWidget" name="tab_objetos">
         <property name="geometry">
          <rect>
           <x>20</x>
@@ -138,20 +138,20 @@
        </widget>
       </widget>
      </widget>
-     <widget class="QWidget" name="page_4">
+     <widget class="QWidget" name="edicion_tablas">
       <widget class="QGroupBox" name="groupBox_4">
        <property name="geometry">
         <rect>
          <x>0</x>
          <y>20</y>
          <width>451</width>
-         <height>501</height>
+         <height>611</height>
         </rect>
        </property>
        <property name="title">
         <string>EDICIÓN (TABLA: ----)</string>
        </property>
-       <widget class="QPushButton" name="pushButton_5">
+       <widget class="QPushButton" name="aniadir_campo">
         <property name="geometry">
          <rect>
           <x>40</x>
@@ -164,7 +164,7 @@
          <string>AÑADIR CAMPO</string>
         </property>
        </widget>
-       <widget class="QPushButton" name="pushButton_8">
+       <widget class="QPushButton" name="borrar_campo">
         <property name="geometry">
          <rect>
           <x>170</x>
@@ -177,7 +177,7 @@
          <string>BORRAR CAMPO</string>
         </property>
        </widget>
-       <widget class="QPushButton" name="pushButton_9">
+       <widget class="QPushButton" name="llave_primaria">
         <property name="geometry">
          <rect>
           <x>300</x>
@@ -210,58 +210,71 @@
          </attribute>
         </widget>
        </widget>
-      </widget>
-      <widget class="QComboBox" name="comboBox_TablasLlaves_2">
-       <property name="geometry">
-        <rect>
-         <x>190</x>
-         <y>550</y>
-         <width>251</width>
-         <height>22</height>
-        </rect>
-       </property>
-      </widget>
-      <widget class="QPushButton" name="btn_AgregarLlave">
-       <property name="geometry">
-        <rect>
-         <x>0</x>
-         <y>550</y>
-         <width>181</width>
-         <height>28</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>AGREGAR LLAVE FORANEA</string>
-       </property>
-      </widget>
-      <widget class="QLabel" name="label_13">
-       <property name="geometry">
-        <rect>
-         <x>270</x>
-         <y>530</y>
-         <width>161</width>
-         <height>16</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>AGREGAR LLAVE FORANEA</string>
-       </property>
-      </widget>
-      <widget class="QPushButton" name="pushButton_10">
-       <property name="geometry">
-        <rect>
-         <x>130</x>
-         <y>590</y>
-         <width>151</width>
-         <height>28</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>SALIR DE LA EDICIÓN</string>
-       </property>
+       <widget class="QPushButton" name="Agregar_llave">
+        <property name="geometry">
+         <rect>
+          <x>30</x>
+          <y>520</y>
+          <width>171</width>
+          <height>28</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>AGREGAR LLAVE FORANEA</string>
+        </property>
+       </widget>
+       <widget class="QComboBox" name="comboBox_TablasLlaves_2">
+        <property name="geometry">
+         <rect>
+          <x>220</x>
+          <y>530</y>
+          <width>221</width>
+          <height>22</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QLabel" name="label_13">
+        <property name="geometry">
+         <rect>
+          <x>270</x>
+          <y>510</y>
+          <width>161</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>AGREGAR LLAVE FORANEA</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="salir_edicion">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>560</y>
+          <width>151</width>
+          <height>28</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>SALIR DE LA EDICIÓN</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="guardar_cambios">
+        <property name="geometry">
+         <rect>
+          <x>50</x>
+          <y>560</y>
+          <width>141</width>
+          <height>28</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>GUARDAR CAMBIOS</string>
+        </property>
+       </widget>
       </widget>
      </widget>
-     <widget class="QWidget" name="page_5">
+     <widget class="QWidget" name="datos_tablas">
       <widget class="QGroupBox" name="groupBox_5">
        <property name="geometry">
         <rect>
@@ -294,11 +307,11 @@
          </attribute>
         </widget>
        </widget>
-       <widget class="QPushButton" name="pushButton_11">
+       <widget class="QPushButton" name="salir_datos">
         <property name="geometry">
          <rect>
-          <x>130</x>
-          <y>570</y>
+          <x>200</x>
+          <y>560</y>
           <width>151</width>
           <height>28</height>
          </rect>
@@ -307,7 +320,7 @@
          <string>SALIR DE LA TABLA</string>
         </property>
        </widget>
-       <widget class="QPushButton" name="pushButton_12">
+       <widget class="QPushButton" name="activar_modificacion">
         <property name="geometry">
          <rect>
           <x>10</x>
@@ -320,7 +333,7 @@
          <string>MODIFICAR</string>
         </property>
        </widget>
-       <widget class="QPushButton" name="pushButton_13">
+       <widget class="QPushButton" name="aceptar_modificacion">
         <property name="geometry">
          <rect>
           <x>120</x>
@@ -333,7 +346,7 @@
          <string>ACEPTAR</string>
         </property>
        </widget>
-       <widget class="QPushButton" name="pushButton_14">
+       <widget class="QPushButton" name="cancelar_modificacion">
         <property name="geometry">
          <rect>
           <x>230</x>
@@ -362,8 +375,8 @@
     <property name="currentIndex">
      <number>0</number>
     </property>
-    <widget class="QWidget" name="page">
-     <widget class="QGroupBox" name="groupBox_7">
+    <widget class="QWidget" name="informacion_general">
+     <widget class="QGroupBox" name="gbox_infog">
       <property name="geometry">
        <rect>
         <x>10</x>
@@ -376,7 +389,7 @@
        <string>INFORMACIÓN GENERAL</string>
       </property>
      </widget>
-     <widget class="QPushButton" name="pushButton_15">
+     <widget class="QPushButton" name="cambio_pag1">
       <property name="geometry">
        <rect>
         <x>230</x>
@@ -390,8 +403,8 @@
       </property>
      </widget>
     </widget>
-    <widget class="QWidget" name="page_2">
-     <widget class="QPushButton" name="pushButton">
+    <widget class="QWidget" name="LDD">
+     <widget class="QPushButton" name="btn_ejec_sentencia">
       <property name="geometry">
        <rect>
         <x>140</x>
@@ -404,7 +417,7 @@
        <string>EJECUTAR SENTENCIA</string>
       </property>
      </widget>
-     <widget class="QGroupBox" name="groupBox_6">
+     <widget class="QGroupBox" name="gbox_ldd">
       <property name="geometry">
        <rect>
         <x>10</x>
@@ -417,7 +430,7 @@
        <string>LDD</string>
       </property>
      </widget>
-     <widget class="QPushButton" name="pushButton_16">
+     <widget class="QPushButton" name="cambio_pag2">
       <property name="geometry">
        <rect>
         <x>230</x>
@@ -453,6 +466,11 @@
        <height>511</height>
       </rect>
      </property>
+     <column>
+      <property name="text">
+       <string notr="true">1</string>
+      </property>
+     </column>
     </widget>
    </widget>
   </widget>

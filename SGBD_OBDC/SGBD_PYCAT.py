@@ -109,6 +109,8 @@ class SentenciasSQL:
             return "SELECT [name] FROM [some_system_table]"
         elif self.dbms_name in ['SQLite3 ODBC Driver', 'SQLite ODBC Driver', 'SQLite ODBC (UTF-8) Driver']:
             return "SELECT name FROM sqlite_master WHERE type='table'"
+        elif self.dbms_name in ['SQLite']:
+            return "SELECT name FROM sqlite_master WHERE type='table'"
         elif self.dbms_name in ['MySQL ODBC 8.0 ANSI Driver', 'MySQL ODBC 8.0 Unicode Driver']:
             return "SHOW DATABASES"
         elif self.dbms_name in ['MySQL']:
@@ -123,6 +125,8 @@ class SentenciasSQL:
             # De nuevo, es solo un ejemplo.
             return f"SELECT [name] FROM {esquema}.[some_system_table]"
         elif self.dbms_name in ['SQLite3 ODBC Driver', 'SQLite ODBC Driver', 'SQLite ODBC (UTF-8) Driver']:
+            return "SELECT name FROM sqlite_master WHERE type='table'"
+        elif self.dbms_name in ['SQLite']:
             return "SELECT name FROM sqlite_master WHERE type='table'"
         elif self.dbms_name in ['MySQL ODBC 8.1 ANSI Driver', 'MySQL ODBC 8.1 Unicode Driver']:
             return f"SHOW TABLES FROM {esquema}"
