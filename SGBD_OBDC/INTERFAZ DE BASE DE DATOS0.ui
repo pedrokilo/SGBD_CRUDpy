@@ -116,25 +116,15 @@
          <string>BORRAR</string>
         </property>
        </widget>
-       <widget class="QTabWidget" name="tab_objetos">
+       <widget class="QTableWidget" name="tab_objetos">
         <property name="geometry">
          <rect>
-          <x>20</x>
+          <x>10</x>
           <y>70</y>
-          <width>421</width>
+          <width>431</width>
           <height>421</height>
          </rect>
         </property>
-        <widget class="QWidget" name="tab">
-         <attribute name="title">
-          <string>Tab 1</string>
-         </attribute>
-        </widget>
-        <widget class="QWidget" name="tab_2">
-         <attribute name="title">
-          <string>Tab 2</string>
-         </attribute>
-        </widget>
        </widget>
       </widget>
      </widget>
@@ -388,6 +378,19 @@
       <property name="title">
        <string>INFORMACIÓN GENERAL</string>
       </property>
+      <widget class="QLabel" name="labe_informacion">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>30</y>
+         <width>271</width>
+         <height>491</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
      </widget>
      <widget class="QPushButton" name="cambio_pag1">
       <property name="geometry">

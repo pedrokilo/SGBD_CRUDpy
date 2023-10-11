@@ -1,7 +1,8 @@
 import sys
 import traceback
 import pyodbc
-from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QLineEdit, QTreeWidgetItem
+from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QLineEdit, QTreeWidgetItem, QTableWidgetItem, \
+    QTableWidget
 from PyQt5.uic import loadUi
 
 class InicioSesion(QMainWindow):
@@ -49,12 +50,20 @@ class InterfazSgbd(QMainWindow):
         self.cursor = self.conn.cursor()
         self.dsn_name = dsn_name
         loadUi("INTERFAZ DE BASE DE DATOS0.ui", self)
+        self.tab_objetos = self.findChild(QTableWidget, 'tab_objetos')
+        if not self.tab_objetos:
+            raise ValueError("tab_objetos no fue encontrado en la UI")
         self.esquema_db = EsquemaBaseDatos(self.conn)
         self.tabla_esquema = TablasEsquema(self.conn)
         self.informacion_db = InformacionBaseDatos(self.conn)
         self.sentencias_sql = SentenciasSQL(self.conn)
         self.arbol.setHeaderLabel(self.dsn_name)
         self.cargar_esquemas_y_tablas()
+        self.tab_objetos.setRowCount(0)
+        self.tab_objetos.setColumnCount(1)
+        self.tab_objetos.setHorizontalHeaderLabels(["Nombre de la tabla"])
+        self.arbol.itemClicked.connect(self.tabla_objetos_llenar)
+        self.arbol.itemClicked.connect(self.mostrar_informacion_esquema)
 
     def cargar_esquemas_y_tablas(self):
         self.arbol.clear()
@@ -66,6 +75,47 @@ class InterfazSgbd(QMainWindow):
             for tabla in tablas:
                 tabla_item = QTreeWidgetItem(esquema_item)
                 tabla_item.setText(0, tabla)
+
+    def tabla_objetos_llenar(self, item):
+        # Si el item tiene un padre, entonces es una tabla, y se toma el padre como el esquema seleccionado
+        esquema_seleccionado = item.parent().text(0) if item.parent() else item.text(0)
+
+        # Limpiamos la tabla `tab_objetos`
+        self.tab_objetos.setRowCount(0)
+
+        # Obtenemos las tablas del esquema seleccionado
+        tablas = self.tabla_esquema.obtener_tablas_de_esquema(esquema_seleccionado)
+
+        for tabla in tablas:
+            row_position = self.tab_objetos.rowCount()
+            self.tab_objetos.insertRow(row_position)
+            self.tab_objetos.setItem(row_position, 0, QTableWidgetItem(tabla))
+
+    def mostrar_informacion_esquema(self, item):
+        # Verifica si el ítem seleccionado tiene un padre (es decir, si es una tabla).
+        if item.parent():
+            nombre_tabla = item.text(0)
+            nombre_esquema = item.parent().text(0)  # Obtiene el nombre del esquema padre.
+            nombre_dsn = self.dsn_name
+
+            # Aquí, asumimos que tienes un método que pueda obtener el número de filas de una tabla.
+            numero_rows = self._obtener_numero_rows(nombre_esquema, nombre_tabla)
+
+            info_text = f'"{nombre_tabla}"\n\nTable\n\n"{nombre_dsn}"\n"{nombre_esquema}"\n\nRows\n"{numero_rows}"'
+        else:
+            nombre_esquema = item.text(0)
+            nombre_dsn = self.dsn_name
+            character_set = "UTF-8"  # Por ejemplo, puedes ajustar esto según tus necesidades.
+            info_text = f'"{nombre_esquema}"\n\nDatabase\n\n"{nombre_dsn}"\n\nCharacter set  {character_set}'
+
+        self.label_informacion.setText(info_text)
+        self.stackedWidget.setCurrentIndex(0)  # Asegúrate de que se muestra la página correcta en tu QStackedWidget.
+
+    def _obtener_numero_rows(self, esquema, tabla):
+        query = f"SELECT COUNT(*) FROM {esquema}.{tabla}"
+        self.cursor.execute(query)
+        numero_rows = self.cursor.fetchone()[0]
+        return numero_rows
 
 class EsquemaBaseDatos:
     def __init__(self, conn):
