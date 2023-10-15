@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1100</width>
-    <height>736</height>
+    <width>1342</width>
+    <height>814</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,8 +17,8 @@
    <widget class="QPushButton" name="actualizar_todo">
     <property name="geometry">
      <rect>
-      <x>20</x>
-      <y>580</y>
+      <x>810</x>
+      <y>630</y>
       <width>191</width>
       <height>28</height>
      </rect>
@@ -33,7 +33,7 @@
       <x>260</x>
       <y>10</y>
       <width>501</width>
-      <height>661</height>
+      <height>721</height>
      </rect>
     </property>
     <property name="title">
@@ -45,7 +45,7 @@
        <x>30</x>
        <y>20</y>
        <width>451</width>
-       <height>621</height>
+       <height>691</height>
       </rect>
      </property>
      <property name="currentIndex">
@@ -62,58 +62,32 @@
         </rect>
        </property>
        <property name="title">
-        <string>OBJETOS</string>
+        <string>OBJETOS (GESTION DE TABLAS)</string>
        </property>
-       <widget class="QPushButton" name="abrir_tabla">
+       <widget class="QPushButton" name="btn_crear_tabla">
         <property name="geometry">
          <rect>
-          <x>10</x>
+          <x>220</x>
           <y>30</y>
           <width>93</width>
           <height>28</height>
          </rect>
         </property>
         <property name="text">
-         <string>ABRIR</string>
+         <string>CREAR TABLA</string>
         </property>
        </widget>
-       <widget class="QPushButton" name="modificar_tabla">
+       <widget class="QPushButton" name="btn_borrar_tabla">
         <property name="geometry">
          <rect>
-          <x>120</x>
+          <x>330</x>
           <y>30</y>
-          <width>93</width>
+          <width>111</width>
           <height>28</height>
          </rect>
         </property>
         <property name="text">
-         <string>MODIFICAR</string>
-        </property>
-       </widget>
-       <widget class="QPushButton" name="crear_tabla">
-        <property name="geometry">
-         <rect>
-          <x>230</x>
-          <y>30</y>
-          <width>93</width>
-          <height>28</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>CREAR</string>
-        </property>
-       </widget>
-       <widget class="QPushButton" name="borrar_tabla">
-        <property name="geometry">
-         <rect>
-          <x>340</x>
-          <y>30</y>
-          <width>93</width>
-          <height>28</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>BORRAR</string>
+         <string>BORRAR TABLA</string>
         </property>
        </widget>
        <widget class="QTableWidget" name="tab_objetos">
@@ -125,26 +99,83 @@
           <height>421</height>
          </rect>
         </property>
+        <column>
+         <property name="text">
+          <string>Nombre de tabla</string>
+         </property>
+        </column>
        </widget>
+      </widget>
+      <widget class="QPushButton" name="btn_modificar_tabla">
+       <property name="geometry">
+        <rect>
+         <x>80</x>
+         <y>550</y>
+         <width>291</width>
+         <height>28</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>ENTAR AL DISEÑO DE LA TABLA (COLUMNAS)</string>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="btn_abrir_tabla">
+       <property name="geometry">
+        <rect>
+         <x>70</x>
+         <y>620</y>
+         <width>321</width>
+         <height>28</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>ENTRAR A MODIFICACION DE DATOS DE LA TABLA</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label">
+       <property name="geometry">
+        <rect>
+         <x>210</x>
+         <y>530</y>
+         <width>31</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>LDD</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_2">
+       <property name="geometry">
+        <rect>
+         <x>210</x>
+         <y>590</y>
+         <width>31</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>LMD</string>
+       </property>
       </widget>
      </widget>
      <widget class="QWidget" name="edicion_tablas">
-      <widget class="QGroupBox" name="groupBox_4">
+      <widget class="QGroupBox" name="gbox_edicion">
        <property name="geometry">
         <rect>
          <x>0</x>
          <y>20</y>
          <width>451</width>
-         <height>611</height>
+         <height>511</height>
         </rect>
        </property>
        <property name="title">
-        <string>EDICIÓN (TABLA: ----)</string>
+        <string>DISEÑO (TABLA: ----) LDD</string>
        </property>
-       <widget class="QPushButton" name="aniadir_campo">
+       <widget class="QPushButton" name="btn_btn_aniadir_campo">
         <property name="geometry">
          <rect>
-          <x>40</x>
+          <x>20</x>
           <y>30</y>
           <width>111</width>
           <height>28</height>
@@ -157,7 +188,7 @@
        <widget class="QPushButton" name="borrar_campo">
         <property name="geometry">
          <rect>
-          <x>170</x>
+          <x>140</x>
           <y>30</y>
           <width>111</width>
           <height>28</height>
@@ -167,99 +198,145 @@
          <string>BORRAR CAMPO</string>
         </property>
        </widget>
-       <widget class="QPushButton" name="llave_primaria">
+       <widget class="QTableWidget" name="tab_EdicionTabla">
         <property name="geometry">
          <rect>
-          <x>300</x>
-          <y>30</y>
-          <width>111</width>
-          <height>28</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>LLAVE PRIMARIA</string>
-        </property>
-       </widget>
-       <widget class="QTabWidget" name="tabWidget_2">
-        <property name="geometry">
-         <rect>
-          <x>20</x>
+          <x>10</x>
           <y>70</y>
           <width>421</width>
           <height>421</height>
          </rect>
         </property>
-        <widget class="QWidget" name="tab_3">
-         <attribute name="title">
-          <string>Tab 1</string>
-         </attribute>
-        </widget>
-        <widget class="QWidget" name="tab_4">
-         <attribute name="title">
-          <string>Tab 2</string>
-         </attribute>
-        </widget>
+        <column>
+         <property name="text">
+          <string>Nombre</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Tipo</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Tamaño</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Not Null</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Llave</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Comentario</string>
+         </property>
+        </column>
        </widget>
-       <widget class="QPushButton" name="Agregar_llave">
+      </widget>
+      <widget class="QPushButton" name="btn_salir_edicion">
+       <property name="geometry">
+        <rect>
+         <x>30</x>
+         <y>650</y>
+         <width>151</width>
+         <height>28</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>SALIR DE LA EDICIÓN</string>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="btn_guardar_cambios">
+       <property name="geometry">
+        <rect>
+         <x>240</x>
+         <y>650</y>
+         <width>141</width>
+         <height>28</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>GUARDAR CAMBIOS</string>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="btn_activar_modificacion_2">
+       <property name="geometry">
+        <rect>
+         <x>20</x>
+         <y>620</y>
+         <width>171</width>
+         <height>28</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>ACTIVAR MODIFICACION</string>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="btn_cancelar_modificacion_2">
+       <property name="geometry">
+        <rect>
+         <x>230</x>
+         <y>620</y>
+         <width>181</width>
+         <height>28</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>CANCELAR MODIFICACION</string>
+       </property>
+      </widget>
+      <widget class="QGroupBox" name="groupBox_3">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>540</y>
+         <width>421</width>
+         <height>71</height>
+        </rect>
+       </property>
+       <property name="title">
+        <string>AGREGAR LLAVE FORANEA</string>
+       </property>
+       <widget class="QComboBox" name="comboBox_TablasLlaves">
         <property name="geometry">
          <rect>
-          <x>30</x>
-          <y>520</y>
+          <x>10</x>
+          <y>40</y>
+          <width>171</width>
+          <height>22</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QLabel" name="label_22">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>20</y>
+          <width>201</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>añadir la llave primaria de la tabla:</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="btn_aniadir_llave">
+        <property name="geometry">
+         <rect>
+          <x>230</x>
+          <y>20</y>
           <width>171</width>
           <height>28</height>
          </rect>
         </property>
         <property name="text">
-         <string>AGREGAR LLAVE FORANEA</string>
-        </property>
-       </widget>
-       <widget class="QComboBox" name="comboBox_TablasLlaves_2">
-        <property name="geometry">
-         <rect>
-          <x>220</x>
-          <y>530</y>
-          <width>221</width>
-          <height>22</height>
-         </rect>
-        </property>
-       </widget>
-       <widget class="QLabel" name="label_13">
-        <property name="geometry">
-         <rect>
-          <x>270</x>
-          <y>510</y>
-          <width>161</width>
-          <height>16</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>AGREGAR LLAVE FORANEA</string>
-        </property>
-       </widget>
-       <widget class="QPushButton" name="salir_edicion">
-        <property name="geometry">
-         <rect>
-          <x>260</x>
-          <y>560</y>
-          <width>151</width>
-          <height>28</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>SALIR DE LA EDICIÓN</string>
-        </property>
-       </widget>
-       <widget class="QPushButton" name="guardar_cambios">
-        <property name="geometry">
-         <rect>
-          <x>50</x>
-          <y>560</y>
-          <width>141</width>
-          <height>28</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>GUARDAR CAMBIOS</string>
+         <string>AÑADIR LLAVE A LA TABLA</string>
         </property>
        </widget>
       </widget>
@@ -271,37 +348,17 @@
          <x>0</x>
          <y>20</y>
          <width>451</width>
-         <height>601</height>
+         <height>671</height>
         </rect>
        </property>
        <property name="title">
-        <string> DATOS DE LA (TABLA: ----)</string>
+        <string>MANIPULACION DE DATOS (TABLA: ----) LMD</string>
        </property>
-       <widget class="QTabWidget" name="tabWidget_3">
+       <widget class="QPushButton" name="btn_salir_datos">
         <property name="geometry">
          <rect>
-          <x>20</x>
-          <y>70</y>
-          <width>421</width>
-          <height>471</height>
-         </rect>
-        </property>
-        <widget class="QWidget" name="tab_5">
-         <attribute name="title">
-          <string>Tab 1</string>
-         </attribute>
-        </widget>
-        <widget class="QWidget" name="tab_6">
-         <attribute name="title">
-          <string>Tab 2</string>
-         </attribute>
-        </widget>
-       </widget>
-       <widget class="QPushButton" name="salir_datos">
-        <property name="geometry">
-         <rect>
-          <x>200</x>
-          <y>560</y>
+          <x>260</x>
+          <y>620</y>
           <width>151</width>
           <height>28</height>
          </rect>
@@ -310,7 +367,7 @@
          <string>SALIR DE LA TABLA</string>
         </property>
        </widget>
-       <widget class="QPushButton" name="activar_modificacion">
+       <widget class="QPushButton" name="btn_activar_modificacion">
         <property name="geometry">
          <rect>
           <x>10</x>
@@ -323,11 +380,11 @@
          <string>MODIFICAR</string>
         </property>
        </widget>
-       <widget class="QPushButton" name="aceptar_modificacion">
+       <widget class="QPushButton" name="btn_aceptar_modificacion">
         <property name="geometry">
          <rect>
-          <x>120</x>
-          <y>30</y>
+          <x>50</x>
+          <y>620</y>
           <width>93</width>
           <height>28</height>
          </rect>
@@ -336,17 +393,66 @@
          <string>ACEPTAR</string>
         </property>
        </widget>
-       <widget class="QPushButton" name="cancelar_modificacion">
+       <widget class="QPushButton" name="btn_cancelar_modificacion">
         <property name="geometry">
          <rect>
-          <x>230</x>
-          <y>30</y>
+          <x>150</x>
+          <y>620</y>
           <width>93</width>
           <height>28</height>
          </rect>
         </property>
         <property name="text">
          <string>CANCELAR</string>
+        </property>
+       </widget>
+       <widget class="QTableWidget" name="tab_DatosTabla">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>70</y>
+          <width>431</width>
+          <height>471</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="btn_aniadirfila">
+        <property name="geometry">
+         <rect>
+          <x>20</x>
+          <y>550</y>
+          <width>93</width>
+          <height>28</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>AÑADIR FILA</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="btn_delete">
+        <property name="geometry">
+         <rect>
+          <x>130</x>
+          <y>550</y>
+          <width>111</width>
+          <height>28</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>BORRAR CAMPO</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="btn_insert">
+        <property name="geometry">
+         <rect>
+          <x>250</x>
+          <y>550</y>
+          <width>121</width>
+          <height>28</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>INSERTAR CAMPO</string>
         </property>
        </widget>
       </widget>
@@ -358,7 +464,7 @@
      <rect>
       <x>770</x>
       <y>10</y>
-      <width>311</width>
+      <width>551</width>
       <height>551</height>
      </rect>
     </property>
@@ -371,20 +477,20 @@
        <rect>
         <x>10</x>
         <y>10</y>
-        <width>291</width>
-        <height>531</height>
+        <width>531</width>
+        <height>491</height>
        </rect>
       </property>
       <property name="title">
        <string>INFORMACIÓN GENERAL</string>
       </property>
-      <widget class="QLabel" name="labe_informacion">
+      <widget class="QLabel" name="label_informacion">
        <property name="geometry">
         <rect>
          <x>10</x>
          <y>30</y>
-         <width>271</width>
-         <height>491</height>
+         <width>501</width>
+         <height>451</height>
         </rect>
        </property>
        <property name="text">
@@ -395,7 +501,7 @@
      <widget class="QPushButton" name="cambio_pag1">
       <property name="geometry">
        <rect>
-        <x>230</x>
+        <x>480</x>
         <y>0</y>
         <width>41</width>
         <height>20</height>
@@ -410,7 +516,7 @@
      <widget class="QPushButton" name="btn_ejec_sentencia">
       <property name="geometry">
        <rect>
-        <x>140</x>
+        <x>380</x>
         <y>510</y>
         <width>161</width>
         <height>28</height>
@@ -425,7 +531,7 @@
        <rect>
         <x>10</x>
         <y>10</y>
-        <width>291</width>
+        <width>531</width>
         <height>491</height>
        </rect>
       </property>
@@ -436,7 +542,7 @@
      <widget class="QPushButton" name="cambio_pag2">
       <property name="geometry">
        <rect>
-        <x>230</x>
+        <x>480</x>
         <y>0</y>
         <width>41</width>
         <height>20</height>
@@ -476,13 +582,39 @@
      </column>
     </widget>
    </widget>
+   <widget class="QPushButton" name="btn_crear_esquema">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>560</y>
+      <width>141</width>
+      <height>28</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>CREAR ESQUEMA</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="btn_crear_esquema_2">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>600</y>
+      <width>141</width>
+      <height>28</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>BORRAR ESQUEMA</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1100</width>
+     <width>1342</width>
      <height>26</height>
     </rect>
    </property>

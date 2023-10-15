@@ -2,7 +2,7 @@ import sys
 import traceback
 import pyodbc
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QLineEdit, QTreeWidgetItem, QTableWidgetItem, \
-    QTableWidget
+    QTableWidget, QStackedWidget, QComboBox, QSpinBox, QCheckBox
 from PyQt5.uic import loadUi
 
 class InicioSesion(QMainWindow):
@@ -56,14 +56,23 @@ class InterfazSgbd(QMainWindow):
         self.esquema_db = EsquemaBaseDatos(self.conn)
         self.tabla_esquema = TablasEsquema(self.conn)
         self.informacion_db = InformacionBaseDatos(self.conn)
-        self.sentencias_sql = SentenciasSQL(self.conn)
+        self.sentencias_sql = SentenciasSQL(self.conn, self.tab_DatosTabla, self.cursor)
         self.arbol.setHeaderLabel(self.dsn_name)
         self.cargar_esquemas_y_tablas()
+        self.stackedWidget = QStackedWidget(self)
         self.tab_objetos.setRowCount(0)
         self.tab_objetos.setColumnCount(1)
+        self.tab_DatosTabla.setRowCount(0)
+        self.tab_DatosTabla.setColumnCount(1)
+        self.tab_EdicionTabla.setRowCount(0)
+        self.tab_EdicionTabla.setColumnCount(1)
         self.tab_objetos.setHorizontalHeaderLabels(["Nombre de la tabla"])
         self.arbol.itemClicked.connect(self.tabla_objetos_llenar)
         self.arbol.itemClicked.connect(self.mostrar_informacion_esquema)
+        self.tab_objetos.itemClicked.connect(self.mostrar_informacion_tabla_seleccionada)
+        self.tab_objetos.itemDoubleClicked.connect(self.cambiar_a_ventana_indice_2)
+        self.btn_abrir_tabla.clicked.connect(self.abrir_tabla_seleccionada)
+        self.btn_modificar_tabla.clicked.connect(self.modificar_tabla)
 
     def cargar_esquemas_y_tablas(self):
         self.arbol.clear()
@@ -90,6 +99,38 @@ class InterfazSgbd(QMainWindow):
             row_position = self.tab_objetos.rowCount()
             self.tab_objetos.insertRow(row_position)
             self.tab_objetos.setItem(row_position, 0, QTableWidgetItem(tabla))
+        self.tab_objetos.resizeColumnsToContents()  # Ajusta el ancho de las columnas según su contenido
+
+    def mostrar_informacion_tabla_seleccionada(self, item):
+        nombre_tabla = item.text()
+        # Aquí, necesitas encontrar el esquema correspondiente a la tabla seleccionada.
+        # Puedes hacerlo buscando el nombre de la tabla en el árbol y tomando el nombre del esquema padre.
+        esquema_seleccionado = None
+        root = self.arbol.invisibleRootItem()
+        for i in range(root.childCount()):
+            esquema_item = root.child(i)
+            for j in range(esquema_item.childCount()):
+                tabla_item = esquema_item.child(j)
+                if tabla_item.text(0) == nombre_tabla:
+                    esquema_seleccionado = esquema_item.text(0)
+                    break
+            if esquema_seleccionado:
+                break
+
+        if esquema_seleccionado:
+            self.seleccionar_item_arbol(esquema_seleccionado, nombre_tabla)
+
+            nombre_dsn = self.dsn_name
+            numero_rows = self._obtener_numero_rows(esquema_seleccionado, nombre_tabla)
+            comentario_tabla = self._obtener_comentario_tabla(esquema_seleccionado, nombre_tabla)
+
+            info_text = (f'\n\nNombre de Tabla:\n\n"{nombre_tabla}"'
+                         f'\n\nNombre de Conexión:\n\n"{nombre_dsn}"'
+                         f'\n\nNombre de Esquema:\n\n"{esquema_seleccionado}"'
+                         f'\n\nRows:\n\n"{numero_rows}"'
+                         f'\n\nComentario:\n\n"{comentario_tabla}"\n\n')
+
+            self.label_informacion.setText(info_text)
 
     def mostrar_informacion_esquema(self, item):
         # Verifica si el ítem seleccionado tiene un padre (es decir, si es una tabla).
@@ -100,16 +141,97 @@ class InterfazSgbd(QMainWindow):
 
             # Aquí, asumimos que tienes un método que pueda obtener el número de filas de una tabla.
             numero_rows = self._obtener_numero_rows(nombre_esquema, nombre_tabla)
+            comentario_tabla = self._obtener_comentario_tabla(nombre_esquema, nombre_tabla)
 
-            info_text = f'"{nombre_tabla}"\n\nTable\n\n"{nombre_dsn}"\n"{nombre_esquema}"\n\nRows\n"{numero_rows}"'
+            info_text = f'\n\nNombre de Tabla:\n\n"{nombre_tabla}"\n\nNombre de Conexión:\n\n"{nombre_dsn}"\n\nNombre de Esquema:\n\n"{nombre_esquema}"\n\nRows\n"{numero_rows}"\n\nComentario:\n\n"{comentario_tabla}"\n\n'
         else:
             nombre_esquema = item.text(0)
             nombre_dsn = self.dsn_name
             character_set = "UTF-8"  # Por ejemplo, puedes ajustar esto según tus necesidades.
-            info_text = f'"{nombre_esquema}"\n\nDatabase\n\n"{nombre_dsn}"\n\nCharacter set  {character_set}'
+            info_text = f'\n\nNombre de Esquema:\n\n"{nombre_esquema}"\n\nNombre de Conexión:\n\n"{nombre_dsn}"\n\nCharacter set:  {character_set}'
 
         self.label_informacion.setText(info_text)
         self.stackedWidget.setCurrentIndex(0)  # Asegúrate de que se muestra la página correcta en tu QStackedWidget.
+
+    def seleccionar_item_arbol(self, esquema, tabla):
+        root = self.arbol.invisibleRootItem()
+        for i in range(root.childCount()):
+            esquema_item = root.child(i)
+            if esquema_item.text(0) == esquema:
+                for j in range(esquema_item.childCount()):
+                    tabla_item = esquema_item.child(j)
+                    if tabla_item.text(0) == tabla:
+                        self.arbol.setCurrentItem(tabla_item)
+                        return
+
+    def _obtener_esquema_de_tabla_seleccionada(self, tabla_seleccionada):
+        root = self.arbol.invisibleRootItem()
+        for i in range(root.childCount()):
+            esquema_item = root.child(i)
+            for j in range(esquema_item.childCount()):
+                tabla_item = esquema_item.child(j)
+                if tabla_item.text(0) == tabla_seleccionada:
+                    return esquema_item.text(0)
+        return None
+
+    def cambiar_a_ventana_indice_2(self):
+        # Cambia a la ventana con índice 2
+        self.ventanas_tablas.setCurrentIndex(2)
+
+        # Obtener el nombre de la tabla seleccionada
+        tabla_seleccionada = self.tab_objetos.item(self.tab_objetos.currentRow(), 0).text()
+
+        # Obtener el nombre del esquema de la tabla seleccionada
+        nombre_del_esquema = self._obtener_esquema_de_tabla_seleccionada(tabla_seleccionada)
+
+        # Carga los datos en tab_DatosTabla
+        if nombre_del_esquema:
+            self.sentencias_sql.cargar_datos_tabla(nombre_del_esquema, tabla_seleccionada)
+        else:
+            self.mostrar_mensaje("No se pudo encontrar el esquema para la tabla seleccionada.")
+
+    def modificar_tabla(self):
+        # Cambiar al índice 1 del QStackedWidget
+        self.stackedWidget.setCurrentIndex(1)
+
+        # Obtener el nombre de la tabla seleccionada
+        if self.tab_objetos.currentRow() != -1:
+            tabla_seleccionada = self.tab_objetos.item(self.tab_objetos.currentRow(), 0).text()
+            # Obtener el nombre del esquema de la tabla seleccionada
+            nombre_del_esquema = self._obtener_esquema_de_tabla_seleccionada(tabla_seleccionada)
+            # Obtener los datos de la tabla (deberás implementar esta función)
+            tabla_data = self.sentencias_sql.cargar_datos_tabla(tabla_seleccionada, nombre_del_esquema)
+
+            # Llenar el QTableWidget tab_EdicionTabla
+            self.sentencias_sql.cargar_datos_tabla(self.tab_EdicionTabla, tabla_data)
+
+    def abrir_tabla_seleccionada(self):
+        # Verifica si hay alguna fila seleccionada en tab_objetos
+        if self.tab_objetos.currentRow() != -1:  # -1 significa que ninguna fila está seleccionada
+            self.ventanas_tablas.setCurrentIndex(2)
+            # Obtener el nombre de la tabla seleccionada
+            tabla_seleccionada = self.tab_objetos.item(self.tab_objetos.currentRow(), 0).text()
+
+            # Obtener el nombre del esquema de la tabla seleccionada
+            nombre_del_esquema = self._obtener_esquema_de_tabla_seleccionada(tabla_seleccionada)
+
+            if nombre_del_esquema:
+                self.sentencias_sql.cargar_datos_tabla(nombre_del_esquema, tabla_seleccionada)
+            else:
+                self.mostrar_mensaje("No se pudo encontrar el esquema para la tabla seleccionada.")
+        else:
+            # Opcional: Mostrar un mensaje de alerta si ninguna fila está seleccionada
+            self.mostrar_mensaje("Por favor, seleccione una tabla antes de presionar 'abrir tabla'.")
+
+    def _obtener_comentario_tabla(self, esquema, tabla):
+        query = f"""
+            SELECT table_comment
+            FROM information_schema.tables 
+            WHERE table_schema = '{esquema}' AND table_name = '{tabla}';
+        """
+        self.cursor.execute(query)
+        comentario = self.cursor.fetchone()[0]
+        return comentario or "Sin comentario"
 
     def _obtener_numero_rows(self, esquema, tabla):
         query = f"SELECT COUNT(*) FROM {esquema}.{tabla}"
@@ -117,35 +239,47 @@ class InterfazSgbd(QMainWindow):
         numero_rows = self.cursor.fetchone()[0]
         return numero_rows
 
-class EsquemaBaseDatos:
-    def __init__(self, conn):
-        self.conn = conn
-        self.cursor = self.conn.cursor()
-        self.sentencias_sql = SentenciasSQL(self.conn)
+    def cargar_datos_en_tabla(self, tabla_widget, datos_tabla):
+        tabla_widget.setRowCount(len(datos_tabla))
+        tabla_widget.setColumnCount(6)  # 6 columnas: Nombre, Tipo, Tamaño, Not Null, Llave, Comentario
 
-    def obtener_esquemas(self):
-        self.cursor.execute(self.sentencias_sql.mostrar_esquemas())
-        return [row[0] for row in self.cursor.fetchall()]
+        for row, atributo in enumerate(datos_tabla):
+            # Insertar los datos en las celdas correspondientes
+            tabla_widget.setItem(row, 0, QTableWidgetItem(atributo['nombre']))
 
-class TablasEsquema:
-    def __init__(self, conn):
-        self.conn = conn
-        self.cursor = self.conn.cursor()
-        self.sentencias_sql = SentenciasSQL(self.conn)
+            # Crear y configurar un QComboBox para la columna 'Tipo'
+            tipo_combo = QComboBox()
+            tipo_combo.addItems(["Tipo1", "Tipo2", "Tipo3"])  # Agrega tus tipos de datos comunes aquí
+            tipo_index = tipo_combo.findText(atributo['tipo'])
+            if tipo_index != -1:
+                tipo_combo.setCurrentIndex(tipo_index)
+            tabla_widget.setCellWidget(row, 1, tipo_combo)
 
-    def obtener_tablas_de_esquema(self, esquema):
-        query = self.sentencias_sql.mostrar_tablas_de_esquema(esquema)
-        self.cursor.execute(query)
-        return [row[0] for row in self.cursor.fetchall()]
+            # Crear y configurar un QSpinBox o QDoubleSpinBox para la columna 'Tamaño'
+            tamaño_spinbox = QSpinBox()  # o QDoubleSpinBox según corresponda
+            tamaño_spinbox.setValue(atributo['tamaño'])
+            tabla_widget.setCellWidget(row, 2, tamaño_spinbox)
 
-class InformacionBaseDatos:
-    def __init__(self, conn):
-        self.conn = conn
-        self.cursor = self.conn.cursor()
+            # Crear y configurar un QCheckBox para las columnas 'Not Null' y 'Llave'
+            not_null_checkbox = QCheckBox()
+            not_null_checkbox.setChecked(atributo['not_null'])
+            tabla_widget.setCellWidget(row, 3, not_null_checkbox)
+
+            llave_checkbox = QCheckBox()
+            llave_checkbox.setChecked(atributo['llave'])
+            tabla_widget.setCellWidget(row, 4, llave_checkbox)
+
+            # Insertar los datos de comentario en la columna 'Comentario'
+            tabla_widget.setItem(row, 5, QTableWidgetItem(atributo['comentario']))
+
+        # Ajustar el tamaño de las columnas según su contenido
+        tabla_widget.resizeColumnsToContents()
 
 class SentenciasSQL:
-    def __init__(self, conn):
+    def __init__(self, conn, tab_DatosTabla, cursor):
         self.dbms_name = self._get_dbms_name(conn)
+        self.tab_DatosTabla = tab_DatosTabla
+        self.cursor = cursor
 
     def _get_dbms_name(self, conn):
         return conn.getinfo(pyodbc.SQL_DBMS_NAME)
@@ -184,6 +318,59 @@ class SentenciasSQL:
             return f"SHOW TABLES FROM {esquema}"
         else:
             raise ValueError(f"No se soporta el driver: {self.dbms_name}")
+
+    def cargar_datos_tabla(self, nombre_del_esquema, tabla_seleccionada):
+        try:
+            # Ejecutar la consulta
+            query = f"SELECT * FROM `{nombre_del_esquema}`.`{tabla_seleccionada}`"
+            self.cursor.execute(query)
+            datos = self.cursor.fetchall()
+
+            # Si el objeto cursor tiene la propiedad description, podemos obtener los nombres de las columnas directamente de allí.
+            columnas = [description[0] for description in self.cursor.description]
+
+            # Establecer el número de columnas y nombres de columnas en tab_DatosTabla
+            self.tab_DatosTabla.setColumnCount(len(columnas))
+            self.tab_DatosTabla.setHorizontalHeaderLabels(columnas)
+
+            # Establecer el número de filas según los datos recuperados
+            self.tab_DatosTabla.setRowCount(len(datos))
+
+            # Rellenar la tabla con los datos
+            for fila_idx, fila in enumerate(datos):
+                for columna_idx, valor in enumerate(fila):
+                    item = QTableWidgetItem(str(valor))
+                    self.tab_DatosTabla.setItem(fila_idx, columna_idx, item)
+
+        except Exception as e:
+            # En caso de error, imprimir el error para diagnóstico
+            print(f"Error al cargar la tabla {tabla_seleccionada} en el esquema {nombre_del_esquema}: {e}")
+
+class EsquemaBaseDatos:
+    def __init__(self, conn):
+        self.conn = conn
+        self.cursor = self.conn.cursor()
+        self.sentencias_sql = SentenciasSQL(self.conn, None, self.cursor)  # None ya que no usamos tab_DatosTabla aquí
+
+    def obtener_esquemas(self):
+        self.cursor.execute(self.sentencias_sql.mostrar_esquemas())
+        return [row[0] for row in self.cursor.fetchall()]
+
+class TablasEsquema:
+    def __init__(self, conn):
+        self.conn = conn
+        self.cursor = self.conn.cursor()
+        self.sentencias_sql = SentenciasSQL(self.conn, None, self.cursor)  # None ya que no usamos tab_DatosTabla aquí
+
+    def obtener_tablas_de_esquema(self, esquema):
+        query = self.sentencias_sql.mostrar_tablas_de_esquema(esquema)
+        self.cursor.execute(query)
+        return [row[0] for row in self.cursor.fetchall()]
+
+class InformacionBaseDatos:
+    def __init__(self, conn):
+        self.conn = conn
+        self.cursor = self.conn.cursor()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
