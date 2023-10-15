@@ -193,20 +193,31 @@ class InterfazSgbd(QMainWindow):
             self.mostrar_mensaje("No se pudo encontrar el esquema para la tabla seleccionada.")
 
     def modificar_tabla(self):
-        # Cambiar al índice 1 del QStackedWidget
-        self.stackedWidget.setCurrentIndex(1)
+        try:
+            self.stackedWidget.setCurrentIndex(1)
+            print("Entrando al método modificar_tabla")
+            # Cambiar al índice 1 del QStackedWidget
+            self.stackedWidget.setCurrentIndex(1)
+            # Verifica si hay alguna fila seleccionada en tab_objetos
+            if self.tab_objetos.currentRow() != -1:  # -1 significa que ninguna fila está seleccionada
+                # Obtener el nombre de la tabla seleccionada
+                tabla_seleccionada = self.tab_objetos.item(self.tab_objetos.currentRow(), 0).text()
 
-        # Obtener el nombre de la tabla seleccionada
-        if self.tab_objetos.currentRow() != -1:
-            tabla_seleccionada = self.tab_objetos.item(self.tab_objetos.currentRow(), 0).text()
-            # Obtener el nombre del esquema de la tabla seleccionada
-            nombre_del_esquema = self._obtener_esquema_de_tabla_seleccionada(tabla_seleccionada)
+                # Obtener el nombre del esquema de la tabla seleccionada
+                nombre_del_esquema = self._obtener_esquema_de_tabla_seleccionada(tabla_seleccionada)
 
-            # Llamar al método para cargar datos de diseño de la tabla
-            tabla_data = self.sentencias_sql.carga_datos_tabla_diseño(nombre_del_esquema, tabla_seleccionada)
-
-            # Llenar el QTableWidget tab_EdicionTabla
-            self.sentencias_sql.cargar_datos_tabla(nombre_del_esquema, tabla_seleccionada, self.conn, self.dsn_name,tabla_data)
+                if nombre_del_esquema:
+                    self.sentencias_sql.carga_datos_tabla_diseño(
+                        nombre_del_esquema, tabla_seleccionada, self.conn, self.dsn_name)
+                else:
+                    self.mostrar_mensaje("No se pudo encontrar el esquema para la tabla seleccionada.")
+            else:
+                # Opcional: Mostrar un mensaje de alerta si ninguna fila está seleccionada
+                self.mostrar_mensaje("Por favor, seleccione una tabla antes de presionar 'ENTAR AL DISEÑO DE LA TABLA (COLUMNAS)'.")
+        except Exception as e:
+            error_details = traceback.format_exc()
+            print(f"Ocurrió un error: {str(error_details)}")
+            # Opcionalmente, puedes imprimir el error completo para propósitos de depuración
 
     def abrir_tabla_seleccionada(self):
         # Verifica si hay alguna fila seleccionada en tab_objetos
@@ -219,7 +230,8 @@ class InterfazSgbd(QMainWindow):
             nombre_del_esquema = self._obtener_esquema_de_tabla_seleccionada(tabla_seleccionada)
 
             if nombre_del_esquema:
-                self.sentencias_sql.cargar_datos_tabla(nombre_del_esquema, tabla_seleccionada)
+                self.sentencias_sql.cargar_datos_tabla(
+                nombre_del_esquema, tabla_seleccionada, self.conn, self.dsn_name)
             else:
                 self.mostrar_mensaje("No se pudo encontrar el esquema para la tabla seleccionada.")
         else:
@@ -257,7 +269,8 @@ class SentenciasSQL:
     def mostrar_esquemas(self):
         if self.dbms_name == 'SQL Server' or self.dbms_name in ['SQL Server Native Client RDA 11.0', 'ODBC Driver 17 for SQL Server']:
             return "SELECT name FROM sys.databases"
-        elif self.dbms_name in ['Microsoft Access Driver (*.mdb, *.accdb)', 'Microsoft Excel Driver (*.xls, *.xlsx, *.xlsm, *.xlsb)', 'Microsoft Access Text Driver (*.txt, *.csv)']:
+        elif self.dbms_name in ['Microsoft Access Driver (*.mdb, *.accdb)', 'Microsoft Excel Driver (*.xls, *.xlsx, *.xlsm, *.xlsb)',
+                                'Microsoft Access Text Driver (*.txt, *.csv)']:
             # Suponiendo que para Access y Excel las bases de datos son archivos, podrías tener una lógica diferente.
             # Aquí solo es un ejemplo.
             return "SELECT [name] FROM [some_system_table]"
@@ -289,8 +302,9 @@ class SentenciasSQL:
         else:
             raise ValueError(f"No se soporta el driver: {self.dbms_name}")
 
-    def carga_datos_tabla_diseño(self, nombre_del_esquema, tabla_seleccionada):
+    def carga_datos_tabla_diseño(self, nombre_del_esquema, tabla_seleccionada, conn, dsn_name):
         try:
+
             # Obtener la información de diseño de la tabla
             query = f"DESCRIBE `{nombre_del_esquema}`.`{tabla_seleccionada}`"
             self.cursor.execute(query)
@@ -306,8 +320,11 @@ class SentenciasSQL:
             column_headers = ["Nombre", "Tipo", "Tamaño", "Not Null", "Llave", "Comentario"]
             self.tab_EdicionTabla.setHorizontalHeaderLabels(column_headers)
 
-            # Instanciar la clase InterfazSgbd para usar su método _obtener_comentario_tabla
-            interfaz_sgbd = InterfazSgbd()
+            # Creando una instancia de InterfazSgbd
+            interfaz_sgbd = InterfazSgbd(conn, dsn_name)
+
+            # Utiliza la instancia para llamar al método _obtener_comentario_tabla
+            comentario = interfaz_sgbd._obtener_comentario_tabla(nombre_del_esquema, tabla_seleccionada)
 
             # Rellenar la tabla con los datos de diseño
             for fila_idx, columna_info in enumerate(diseño_tabla):
@@ -346,19 +363,18 @@ class SentenciasSQL:
                 llave_checkbox = QCheckBox()
                 self.tab_EdicionTabla.setCellWidget(fila_idx, 4, llave_checkbox)
 
-                # Comentario (llama al método _obtener_comentario_tabla de InterfazSgbd)
-                comentario = self.main_window._obtener_comentario_tabla(nombre_del_esquema, tabla_seleccionada, self.tab_EdicionTabla)
                 comentario_item = QTableWidgetItem(comentario)
                 self.tab_EdicionTabla.setItem(fila_idx, 5, comentario_item)
 
             return True  # Devuelve True para indicar que se cargaron los datos correctamente
         except Exception as e:
+            error_details = traceback.format_exc()
             # En caso de error, puedes manejarlo o imprimirlo para diagnóstico
             print(
-                f"Error al cargar datos de diseño de la tabla {tabla_seleccionada} en el esquema {nombre_del_esquema}: {e}")
+                f"Error al cargar datos de diseño de la tabla {tabla_seleccionada} en el esquema {nombre_del_esquema}: {error_details}")
             return False  # Devuelve False para indicar que se produjo un error
 
-    def cargar_datos_tabla(self, nombre_del_esquema, tabla_seleccionada, conn, dsn_name, tabla_data):
+    def cargar_datos_tabla(self, nombre_del_esquema, tabla_seleccionada, conn, dsn_name):
         try:
             # Ejecutar la consulta
             query = f"SELECT * FROM `{nombre_del_esquema}`.`{tabla_seleccionada}`"
