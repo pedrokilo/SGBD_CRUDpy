@@ -1,8 +1,9 @@
 import sys
 import traceback
 import pyodbc
+import re
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QLineEdit, QTreeWidgetItem, QTableWidgetItem, \
-    QTableWidget, QStackedWidget, QComboBox, QSpinBox, QCheckBox, QDoubleSpinBox
+    QTableWidget, QStackedWidget, QComboBox, QSpinBox, QCheckBox, QDoubleSpinBox, QRadioButton
 from PyQt5.uic import loadUi
 
 class InicioSesion(QMainWindow):
@@ -75,6 +76,8 @@ class InterfazSgbd(QMainWindow):
         self.tab_objetos.itemDoubleClicked.connect(self.cambiar_a_ventana_indice_2)
         self.btn_abrir_tabla.clicked.connect(self.abrir_tabla_seleccionada)
         self.btn_modificar_tabla.clicked.connect(self.modificar_tabla)
+        self.btn_salir_edicion.clicked.connect(self.salir_ventana_principal)
+        self.btn_salir_datos.clicked.connect(self.salir_ventana_principal)
 
     def cargar_esquemas_y_tablas(self):
         self.arbol.clear()
@@ -192,12 +195,13 @@ class InterfazSgbd(QMainWindow):
         else:
             self.mostrar_mensaje("No se pudo encontrar el esquema para la tabla seleccionada.")
 
+    def salir_ventana_principal(self):
+        self.ventanas_tablas.setCurrentIndex(0)
+
     def modificar_tabla(self):
         try:
-            self.stackedWidget.setCurrentIndex(1)
-            print("Entrando al método modificar_tabla")
             # Cambiar al índice 1 del QStackedWidget
-            self.stackedWidget.setCurrentIndex(1)
+            self.ventanas_tablas.setCurrentIndex(1)
             # Verifica si hay alguna fila seleccionada en tab_objetos
             if self.tab_objetos.currentRow() != -1:  # -1 significa que ninguna fila está seleccionada
                 # Obtener el nombre de la tabla seleccionada
@@ -302,11 +306,12 @@ class SentenciasSQL:
         else:
             raise ValueError(f"No se soporta el driver: {self.dbms_name}")
 
+    import re
+
     def carga_datos_tabla_diseño(self, nombre_del_esquema, tabla_seleccionada, conn, dsn_name):
         try:
-
-            # Obtener la información de diseño de la tabla
-            query = f"DESCRIBE `{nombre_del_esquema}`.`{tabla_seleccionada}`"
+            # Obtener la información de diseño detallada de la tabla
+            query = f"SHOW FULL COLUMNS FROM `{nombre_del_esquema}`.`{tabla_seleccionada}`"
             self.cursor.execute(query)
 
             # Recuperar la información de diseño como una lista de tuplas
@@ -320,56 +325,58 @@ class SentenciasSQL:
             column_headers = ["Nombre", "Tipo", "Tamaño", "Not Null", "Llave", "Comentario"]
             self.tab_EdicionTabla.setHorizontalHeaderLabels(column_headers)
 
-            # Creando una instancia de InterfazSgbd
-            interfaz_sgbd = InterfazSgbd(conn, dsn_name)
-
-            # Utiliza la instancia para llamar al método _obtener_comentario_tabla
-            comentario = interfaz_sgbd._obtener_comentario_tabla(nombre_del_esquema, tabla_seleccionada)
-
             # Rellenar la tabla con los datos de diseño
             for fila_idx, columna_info in enumerate(diseño_tabla):
                 nombre_columna = columna_info[0]
-                tipo_dato = columna_info[1]
+                tipo_dato_full = columna_info[1]
+                not_null_value = columna_info[3]
+                llave_value = columna_info[4]
+                comentario_columna = columna_info[8]  # El comentario de la columna está en la posición 8
+
+                # Extraer tipo y tamaño
+                match = re.match(r"([a-z]+)(?:\((\d+)\))?", tipo_dato_full, re.I)
+                if match:
+                    tipo_dato, tamaño_dato = match.groups()
+                else:
+                    tipo_dato, tamaño_dato = tipo_dato_full, None
 
                 # Nombre de la columna
                 self.tab_EdicionTabla.setItem(fila_idx, 0, QTableWidgetItem(nombre_columna))
 
                 # Tipo de dato (usamos un combobox para seleccionar el tipo)
                 tipo_combobox = QComboBox()
-                tipo_combobox.addItem(tipo_dato)  # Agrega el tipo de dato actual como opción
+                tipo_combobox.addItem(tipo_dato)
                 self.tab_EdicionTabla.setCellWidget(fila_idx, 1, tipo_combobox)
 
                 # Tamaño (spinbox o sin contenido)
-                tamaño_item = None  # Por defecto, no creamos un widget de tamaño
-
-                # Si el tipo de dato es "decimal," usamos QDoubleSpinBox
-                if tipo_dato.lower() == 'decimal':
-                    tamaño_item = QDoubleSpinBox()
-                # Si el tipo de dato admite tamaño, usamos QSpinBox
-                elif tipo_dato.lower() in ['int', 'float', 'varchar']:  # Agrega otros tipos de dato si es necesario
+                if tamaño_dato:
                     tamaño_item = QSpinBox()
-
-                if tamaño_item:
-                    # Establecemos las propiedades del tamaño_item según sea necesario
-                    tamaño_item.setValue(0)  # Establece un valor inicial
-                    tamaño_item.setSingleStep(1)  # Ajusta el paso según lo necesario
+                    tamaño_item.setValue(int(tamaño_dato))
                     self.tab_EdicionTabla.setCellWidget(fila_idx, 2, tamaño_item)
 
                 # Not Null (checkbox)
                 not_null_checkbox = QCheckBox()
+                not_null_checkbox.setChecked(not_null_value == "YES")
                 self.tab_EdicionTabla.setCellWidget(fila_idx, 3, not_null_checkbox)
 
-                # Llave (checkbox)
-                llave_checkbox = QCheckBox()
-                self.tab_EdicionTabla.setCellWidget(fila_idx, 4, llave_checkbox)
+                # Llave
+                if llave_value == "PRI":
+                    llave_checkbox = QCheckBox("(PK)")
+                    llave_checkbox.setChecked(True)
+                    self.tab_EdicionTabla.setCellWidget(fila_idx, 4, llave_checkbox)
+                elif llave_value == "MUL":
+                    llave_radiobutton = QRadioButton("(FK)")
+                    llave_radiobutton.setChecked(True)  # Radio button activado
+                    self.tab_EdicionTabla.setCellWidget(fila_idx, 4, llave_radiobutton)
 
-                comentario_item = QTableWidgetItem(comentario)
+                # Comentario de la columna
+                comentario_item = QTableWidgetItem(comentario_columna)
                 self.tab_EdicionTabla.setItem(fila_idx, 5, comentario_item)
 
             return True  # Devuelve True para indicar que se cargaron los datos correctamente
+
         except Exception as e:
             error_details = traceback.format_exc()
-            # En caso de error, puedes manejarlo o imprimirlo para diagnóstico
             print(
                 f"Error al cargar datos de diseño de la tabla {tabla_seleccionada} en el esquema {nombre_del_esquema}: {error_details}")
             return False  # Devuelve False para indicar que se produjo un error
