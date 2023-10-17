@@ -77,11 +77,11 @@ class InterfazSgbd(QMainWindow):
         self.tab_objetos.itemDoubleClicked.connect(self.cambiar_a_ventana_indice_2)
         self.btn_crear_esquema.clicked.connect(self.mostrar_ventana_crear_esquema)
         self.btn_crear_tabla.clicked.connect(self.mostrar_ventana_crear_tabla)
+        self.btn_modificar_tabla.clicked.connect(self.modificar_tabla)
         self.btn_borrar_esquema.clicked.connect(self.borrar_esquema_seleccionado)
         self.btn_abrir_tabla.clicked.connect(self.abrir_tabla_seleccionada)
         self.btn_salir_edicion.clicked.connect(self.salir_ventana_principal)
         self.btn_salir_datos.clicked.connect(self.salir_ventana_principal)
-
 
     def cargar_esquemas_y_tablas(self):
         self.arbol.clear()
@@ -309,6 +309,29 @@ class InterfazSgbd(QMainWindow):
             # La ventana emergente se cerró con "Aceptar", realiza la creación de la tabla aquí
             nombre_tabla = ventana_crear_tabla.le_nombre_tabla.text()
             comentario_tabla = ventana_crear_tabla.le_comentario_tabla.text()
+
+    def borrar_esquema_seleccionado(self):
+        # Obtén el esquema seleccionado del árbol
+        item_seleccionado = self.arbol.currentItem()
+        if item_seleccionado and not item_seleccionado.parent():
+            # Se seleccionó un esquema (no es una tabla)
+            nombre_esquema = item_seleccionado.text(0)
+
+            # Pregunta al usuario si está seguro de eliminar el esquema
+            respuesta = QMessageBox.question(
+                self, "Confirmación", f"¿Está seguro de eliminar el esquema '{nombre_esquema}'?",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+            if respuesta == QMessageBox.Yes:
+                # El usuario confirmó, procede a eliminar el esquema
+                if self.sentencias_sql.borrar_esquema(nombre_esquema):
+                    # Recarga la lista de esquemas después de eliminar
+                    self.cargar_esquemas_y_tablas()
+                    self.mostrar_mensaje(f"Se eliminó el esquema '{nombre_esquema}' exitosamente.")
+                else:
+                    self.mostrar_mensaje(f"No se pudo eliminar el esquema '{nombre_esquema}'.")
+        else:
+            self.mostrar_mensaje("Por favor, seleccione un esquema para eliminar.")
 
     def mostrar_mensaje(self, mensaje):
         msg = QMessageBox()
@@ -567,11 +590,30 @@ class VentanaCrearEsquema(QDialog):
         layout.addWidget(self.btn_cancelar)
 
         self.charsets_comunes = [
-            "UTF-8",
-            "UTF-16",
-            "ISO-8859-1",
-            "ISO-8859-15",
-            "UTF-8mb4",
+            "armscii8",
+            "ascii",
+            "big5",
+            "binary",
+            "cp850",
+            "cp1250",
+            "dec8",
+            "eucjpms",
+            "euckr",
+            "gb2312",
+            "gbk",
+            "geostd8",
+            "greek",
+            "hebrew",
+            "hp8",
+            "keybcs2",
+            "koi8r",
+            "koi8u",
+            "macce",
+            "macroman",
+            "sjis",
+            "utf8mb3",
+            "utf8",
+            "utf16",
             "latin1",
             # Agrega más charsets según tus necesidades
         ]
@@ -640,6 +682,18 @@ class VentanaCrearTabla(QDialog):
 
         # Cierra la ventana emergente después de crear la tabla
         self.accept()
+
+class InsertadoEnTabla(QDialog):
+    def __init__(self):
+        super().__init__()
+        loadUi("INTERFAZ DE BASE DE DATOS0.ui", self)
+        self.le_nombre_tabla = self.findChild(QLineEdit, 'le_nombre_tabla')
+        self.le_comentario_tabla = self.findChild(QLineEdit, 'le_comentario_tabla')
+
+    def obtener_datos_tabla(self):
+        nombre_tabla = self.le_nombre_tabla.text()
+        comentario_tabla = self.le_comentario_tabla.text()
+        return nombre_tabla, comentario_tabla
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

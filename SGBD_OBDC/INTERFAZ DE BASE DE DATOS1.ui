@@ -205,7 +205,7 @@
    <property name="title">
     <string>LDD</string>
    </property>
-   <widget class="QTextEdit" name="textEdit">
+   <widget class="QTextEdit" name="textosentenciasql">
     <property name="geometry">
      <rect>
       <x>10</x>
