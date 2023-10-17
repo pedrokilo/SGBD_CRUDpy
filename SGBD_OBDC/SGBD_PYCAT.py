@@ -75,7 +75,6 @@ class InterfazSgbd(QMainWindow):
         self.tab_objetos.itemClicked.connect(self.mostrar_informacion_tabla_seleccionada)
         self.tab_objetos.itemDoubleClicked.connect(self.cambiar_a_ventana_indice_2)
         self.btn_abrir_tabla.clicked.connect(self.abrir_tabla_seleccionada)
-        self.btn_modificar_tabla.clicked.connect(self.cargar_llavesPrimarias_combobox)
         self.btn_salir_edicion.clicked.connect(self.salir_ventana_principal)
         self.btn_salir_datos.clicked.connect(self.salir_ventana_principal)
 
