@@ -262,8 +262,6 @@ class InterfazSgbd(QMainWindow):
         numero_rows = self.cursor.fetchone()[0]
         return numero_rows
 
-    def borrar_esquema_seleccionado(self):
-        # Obtén el esquema seleccionado del árbol
         item_seleccionado = self.arbol.currentItem()
         if not item_seleccionado or not item_seleccionado.parent():
             # No hay esquema seleccionado
@@ -272,19 +270,19 @@ class InterfazSgbd(QMainWindow):
 
         nombre_esquema = item_seleccionado.text(0)
 
-        # Pregunta al usuario si está seguro de eliminar el esquema
-        respuesta = QMessageBox.question(self, "Confirmación",
-                                         f"¿Está seguro de eliminar el esquema '{nombre_esquema}'?",
-                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        # Pregunta al usuario si está seguro de eliminar el esquema y todas las tablas dentro de él
+        respuesta = QMessageBox.question(
+            self, "Confirmación", f"¿Está seguro de eliminar el esquema '{nombre_esquema}' y todas sus tablas y objetos?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 
         if respuesta == QMessageBox.Yes:
-            # El usuario confirmó, procede a eliminar el esquema
-            if self.sentencias_sql.borrar_esquema(nombre_esquema):
+            # El usuario confirmó, procede a eliminar el esquema y sus objetos
+            if self.sentencias_sql.borrar_esquema_completo(nombre_esquema):
                 # Recarga la lista de esquemas después de eliminar
                 self.cargar_esquemas_y_tablas()
-                self.mostrar_mensaje(f"Se eliminó el esquema '{nombre_esquema}' exitosamente.")
+                self.mostrar_mensaje(f"Se eliminó el esquema '{nombre_esquema}' y sus objetos exitosamente.")
             else:
-                self.mostrar_mensaje(f"No se pudo eliminar el esquema '{nombre_esquema}'.")
+                self.mostrar_mensaje(f"No se pudo eliminar el esquema '{nombre_esquema}' y sus objetos.")
 
     def mostrar_ventana_crear_esquema(self):
         ventana_crear_esquema = VentanaCrearEsquema()
@@ -492,6 +490,41 @@ class SentenciasSQL:
             # Manejo de errores
             print(f"Error al eliminar el esquema {nombre_esquema}: {e}")
             return False
+
+    def borrar_esquema_completo(self, nombre_esquema):
+        try:
+            # Obtén una lista de todas las tablas y objetos en el esquema
+            tablas_objetos = self.obtener_tablas_y_objetos_en_esquema(nombre_esquema)
+
+            # Elimina todas las tablas y objetos uno por uno
+            for tabla_objeto in tablas_objetos:
+                self.borrar_tabla_objeto_en_esquema(nombre_esquema, tabla_objeto)
+
+            # Finalmente, elimina el esquema
+            sql = f"DROP SCHEMA `{nombre_esquema}`;"
+            self.cursor.execute(sql)
+            self.conn.commit()
+            return True
+        except Exception as e:
+            # Manejo de errores
+            print(f"Error al eliminar el esquema {nombre_esquema} y sus objetos: {e}")
+            return False
+
+    def obtener_tablas_y_objetos_en_esquema(self, nombre_esquema):
+        # Aquí debes ejecutar una consulta SQL para obtener una lista de todas las tablas y objetos en el esquema.
+        # Deberías devolver una lista de nombres de tablas y objetos.
+        # Por ejemplo:
+        sql = f"SELECT table_name FROM information_schema.tables WHERE table_schema = '{nombre_esquema}';"
+        self.cursor.execute(sql)
+        tablas = [row[0] for row in self.cursor.fetchall()]
+        return tablas
+
+    def borrar_tabla_objeto_en_esquema(self, nombre_esquema, nombre_tabla_objeto):
+        # Aquí debes ejecutar una sentencia SQL para eliminar una tabla u objeto específico en el esquema.
+        # Por ejemplo:
+        sql = f"DROP TABLE `{nombre_esquema}`.`{nombre_tabla_objeto}`;"
+        self.cursor.execute(sql)
+        self.conn.commit()
 
     def mostrar_mensaje(self, mensaje):
         msg = QMessageBox()
