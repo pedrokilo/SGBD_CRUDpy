@@ -4,7 +4,8 @@ import traceback
 import pyodbc
 import re
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QLineEdit, QTreeWidgetItem, QTableWidgetItem, \
-    QTableWidget, QStackedWidget, QComboBox, QSpinBox, QCheckBox, QDoubleSpinBox, QRadioButton
+    QTableWidget, QStackedWidget, QComboBox, QSpinBox, QCheckBox, QDoubleSpinBox, QRadioButton, QDialog, QLabel, \
+    QPushButton, QVBoxLayout
 from PyQt5.uic import loadUi
 
 class InicioSesion(QMainWindow):
@@ -74,9 +75,13 @@ class InterfazSgbd(QMainWindow):
         self.arbol.itemClicked.connect(self.mostrar_informacion_esquema)
         self.tab_objetos.itemClicked.connect(self.mostrar_informacion_tabla_seleccionada)
         self.tab_objetos.itemDoubleClicked.connect(self.cambiar_a_ventana_indice_2)
+        self.btn_crear_esquema.clicked.connect(self.mostrar_ventana_crear_esquema)
+        self.btn_crear_tabla.clicked.connect(self.mostrar_ventana_crear_tabla)
+        self.btn_borrar_esquema.clicked.connect(self.borrar_esquema_seleccionado)
         self.btn_abrir_tabla.clicked.connect(self.abrir_tabla_seleccionada)
         self.btn_salir_edicion.clicked.connect(self.salir_ventana_principal)
         self.btn_salir_datos.clicked.connect(self.salir_ventana_principal)
+
 
     def cargar_esquemas_y_tablas(self):
         self.arbol.clear()
@@ -257,6 +262,63 @@ class InterfazSgbd(QMainWindow):
         numero_rows = self.cursor.fetchone()[0]
         return numero_rows
 
+    def borrar_esquema_seleccionado(self):
+        # Obtén el esquema seleccionado del árbol
+        item_seleccionado = self.arbol.currentItem()
+        if not item_seleccionado or not item_seleccionado.parent():
+            # No hay esquema seleccionado
+            self.mostrar_mensaje("Por favor, seleccione un esquema para eliminar.")
+            return
+
+        nombre_esquema = item_seleccionado.text(0)
+
+        # Pregunta al usuario si está seguro de eliminar el esquema
+        respuesta = QMessageBox.question(self, "Confirmación",
+                                         f"¿Está seguro de eliminar el esquema '{nombre_esquema}'?",
+                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+        if respuesta == QMessageBox.Yes:
+            # El usuario confirmó, procede a eliminar el esquema
+            if self.sentencias_sql.borrar_esquema(nombre_esquema):
+                # Recarga la lista de esquemas después de eliminar
+                self.cargar_esquemas_y_tablas()
+                self.mostrar_mensaje(f"Se eliminó el esquema '{nombre_esquema}' exitosamente.")
+            else:
+                self.mostrar_mensaje(f"No se pudo eliminar el esquema '{nombre_esquema}'.")
+
+    def mostrar_ventana_crear_esquema(self):
+        ventana_crear_esquema = VentanaCrearEsquema()
+        if ventana_crear_esquema.exec_() == QDialog.Accepted:
+            # La ventana emergente se cerró con "Aceptar", realiza la creación del esquema aquí
+            nombre_esquema = ventana_crear_esquema.le_nombre_esquema.text()
+            characterset = ventana_crear_esquema.cb_characterset.currentText()
+
+            # Realiza la operación de creación del esquema en la base de datos aquí
+            # Llama al método para crear el esquema en la base de datos
+            if self.sentencias_sql.crear_esquema(nombre_esquema, characterset):
+                self.mostrar_mensaje(f"Se creó el esquema '{nombre_esquema}' con éxito.")
+                # Actualiza el árbol u otras partes de la interfaz según sea necesario
+                self.cargar_esquemas_y_tablas()
+            else:
+                self.mostrar_mensaje(f"No se pudo crear el esquema '{nombre_esquema}'.")
+
+    def mostrar_ventana_crear_tabla(self):
+        if not self.arbol.currentItem():
+            self.mostrar_mensaje("Debe seleccionar un esquema antes de crear una tabla.")
+            return
+        ventana_crear_tabla = VentanaCrearTabla()
+        if ventana_crear_tabla.exec_() == QDialog.Accepted:
+            # La ventana emergente se cerró con "Aceptar", realiza la creación de la tabla aquí
+            nombre_tabla = ventana_crear_tabla.le_nombre_tabla.text()
+            comentario_tabla = ventana_crear_tabla.le_comentario_tabla.text()
+
+    def mostrar_mensaje(self, mensaje):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Information)
+        msg.setText(mensaje)
+        msg.setWindowTitle("Mensaje")
+        msg.exec_()
+
 class SentenciasSQL:
     def __init__(self, conn, tab_DatosTabla, cursor, tab_EdicionTabla):
         self.dbms_name = self._get_dbms_name(conn)
@@ -405,6 +467,38 @@ class SentenciasSQL:
             # En caso de error, imprimir el error para diagnóstico
             print(f"Error al cargar la tabla {tabla_seleccionada} en el esquema {nombre_del_esquema}: {e}")
 
+    def crear_esquema(self, nombre_esquema, characterset):
+        try:
+            # Modifica la sentencia SQL para utilizar el conjunto de caracteres válido
+            sql = f"CREATE SCHEMA `{nombre_esquema}` DEFAULT CHARACTER SET {characterset};"
+            self.cursor.execute(sql)
+            self.conn.commit()
+            return True
+        except Exception as e:
+            error_details = traceback.format_exc()
+            # En caso de error, imprime el error para diagnóstico
+            self.mostrar_mensaje(f"Error al crear el esquema {nombre_esquema}: {str(e)}\nDetalles:\n{error_details}")
+            print(f"Error al crear el esquema {nombre_esquema}: {error_details}")
+            return False
+
+    def borrar_esquema(self, nombre_esquema):
+        try:
+            # Modifica la sentencia SQL para eliminar el esquema
+            sql = f"DROP SCHEMA `{nombre_esquema}`;"
+            self.cursor.execute(sql)
+            self.conn.commit()
+            return True
+        except Exception as e:
+            # Manejo de errores
+            print(f"Error al eliminar el esquema {nombre_esquema}: {e}")
+            return False
+
+    def mostrar_mensaje(self, mensaje):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Information)
+        msg.setText(mensaje)
+        msg.setWindowTitle("Mensaje")
+        msg.exec_()
 
 class EsquemaBaseDatos:
     def __init__(self, conn):
@@ -415,6 +509,56 @@ class EsquemaBaseDatos:
     def obtener_esquemas(self):
         self.cursor.execute(self.sentencias_sql.mostrar_esquemas())
         return [row[0] for row in self.cursor.fetchall()]
+
+class VentanaCrearEsquema(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Crear Esquema")
+
+        self.label_nombre_esquema = QLabel("Nombre del Esquema:")
+        self.le_nombre_esquema = QLineEdit()
+
+        self.label_characterset = QLabel("Character Set:")
+        self.cb_characterset = QComboBox()
+        self.cb_characterset.setEditable(True)  # Permite la edición del ComboBox
+
+        self.btn_crear = QPushButton("Crear")
+        self.btn_cancelar = QPushButton("Cancelar")
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.label_nombre_esquema)
+        layout.addWidget(self.le_nombre_esquema)
+        layout.addWidget(self.label_characterset)
+        layout.addWidget(self.cb_characterset)
+        layout.addWidget(self.btn_crear)
+        layout.addWidget(self.btn_cancelar)
+
+        self.charsets_comunes = [
+            "UTF-8",
+            "UTF-16",
+            "ISO-8859-1",
+            "ISO-8859-15",
+            "UTF-8mb4",
+            "latin1",
+            # Agrega más charsets según tus necesidades
+        ]
+
+        for charset in self.charsets_comunes:
+            self.cb_characterset.addItem(charset)
+        self.setLayout(layout)
+
+        self.btn_crear.clicked.connect(self.crear_esquema)
+        self.btn_cancelar.clicked.connect(self.close)
+
+    def crear_esquema(self):
+        nombre_esquema = self.le_nombre_esquema.text()
+        characterset = self.cb_characterset.currentText()  # Obtiene el texto actual del ComboBox
+
+        # Realiza la operación de creación del esquema en la base de datos aquí
+        # Debes utilizar la información ingresada (nombre_esquema y characterset) para crear el esquema
+
+        # Cierra la ventana emergente después de crear el esquema
+        self.accept()
 
 class TablasEsquema:
     def __init__(self, conn):
@@ -427,6 +571,42 @@ class TablasEsquema:
         self.cursor.execute(query)
         return [row[0] for row in self.cursor.fetchall()]
 
+class VentanaCrearTabla(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Crear Tabla")
+
+        self.label_nombre_tabla = QLabel("Nombre de la Tabla:")
+        self.le_nombre_tabla = QLineEdit()
+
+        self.label_comentario_tabla = QLabel("Comentario de la Tabla (Opcional):")
+        self.le_comentario_tabla = QLineEdit()
+
+        self.btn_crear = QPushButton("Crear")
+        self.btn_cancelar = QPushButton("Cancelar")
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.label_nombre_tabla)
+        layout.addWidget(self.le_nombre_tabla)
+        layout.addWidget(self.label_comentario_tabla)
+        layout.addWidget(self.le_comentario_tabla)
+        layout.addWidget(self.btn_crear)
+        layout.addWidget(self.btn_cancelar)
+
+        self.setLayout(layout)
+
+        self.btn_crear.clicked.connect(self.crear_tabla)
+        self.btn_cancelar.clicked.connect(self.close)
+
+    def crear_tabla(self):
+        nombre_tabla = self.le_nombre_tabla.text()
+        comentario_tabla = self.le_comentario_tabla.text()
+
+        # Realiza la operación de creación de la tabla en la base de datos aquí
+        # Debes utilizar la información ingresada (nombre_tabla y comentario_tabla) para crear la tabla
+
+        # Cierra la ventana emergente después de crear la tabla
+        self.accept()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
