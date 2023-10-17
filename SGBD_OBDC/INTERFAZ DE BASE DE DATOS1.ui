@@ -78,23 +78,10 @@
      <string>AÑADIR FILA</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="btn_insertar_fila">
-    <property name="geometry">
-     <rect>
-      <x>120</x>
-      <y>30</y>
-      <width>121</width>
-      <height>28</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>INSERTAR CAMPO</string>
-    </property>
-   </widget>
    <widget class="QPushButton" name="btn_borrar_fila">
     <property name="geometry">
      <rect>
-      <x>250</x>
+      <x>120</x>
       <y>30</y>
       <width>111</width>
       <height>28</height>
@@ -107,7 +94,7 @@
    <widget class="QPushButton" name="btn_llave_primaria">
     <property name="geometry">
      <rect>
-      <x>370</x>
+      <x>240</x>
       <y>30</y>
       <width>111</width>
       <height>28</height>
@@ -120,7 +107,7 @@
    <widget class="QPushButton" name="btn_guardar">
     <property name="geometry">
      <rect>
-      <x>40</x>
+      <x>20</x>
       <y>320</y>
       <width>93</width>
       <height>28</height>
@@ -133,8 +120,8 @@
    <widget class="QPushButton" name="btn_salir">
     <property name="geometry">
      <rect>
-      <x>170</x>
-      <y>320</y>
+      <x>20</x>
+      <y>360</y>
       <width>93</width>
       <height>28</height>
      </rect>
@@ -142,6 +129,55 @@
     <property name="text">
      <string>SALIR</string>
     </property>
+   </widget>
+   <widget class="QGroupBox" name="groupBox_3">
+    <property name="geometry">
+     <rect>
+      <x>150</x>
+      <y>310</y>
+      <width>421</width>
+      <height>71</height>
+     </rect>
+    </property>
+    <property name="title">
+     <string>AGREGAR LLAVE FORANEA</string>
+    </property>
+    <widget class="QComboBox" name="comboBox_TablasLlaves">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>40</y>
+       <width>171</width>
+       <height>22</height>
+      </rect>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_22">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>20</y>
+       <width>201</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>añadir la llave primaria de la tabla:</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="btn_aniadir_llave">
+     <property name="geometry">
+      <rect>
+       <x>230</x>
+       <y>20</y>
+       <width>171</width>
+       <height>28</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>AÑADIR LLAVE A LA TABLA</string>
+     </property>
+    </widget>
    </widget>
   </widget>
  </widget>

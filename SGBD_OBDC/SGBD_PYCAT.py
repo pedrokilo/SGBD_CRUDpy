@@ -1,3 +1,4 @@
+import functools
 import sys
 import traceback
 import pyodbc
@@ -37,6 +38,7 @@ class InicioSesion(QMainWindow):
             self.close()
         except Exception as e:
             error_details = traceback.format_exc()
+            print(f"Error al conectar: {str(e)}\nDetalles:\n{error_details}")
             self.mostrar_mensaje(f"Error al conectar: {str(e)}\nDetalles:\n{error_details}")
 
     def mostrar_mensaje(self, mensaje):
@@ -54,11 +56,8 @@ class InterfazSgbd(QMainWindow):
         self.dsn_name = dsn_name
         loadUi("INTERFAZ DE BASE DE DATOS0.ui", self)
         self.tab_objetos = self.findChild(QTableWidget, 'tab_objetos')
-        if not self.tab_objetos:
-            raise ValueError("tab_objetos no fue encontrado en la UI")
         self.esquema_db = EsquemaBaseDatos(self.conn)
         self.tabla_esquema = TablasEsquema(self.conn)
-        self.informacion_db = InformacionBaseDatos(self.conn)
         self.sentencias_sql = SentenciasSQL(self.conn, self.tab_DatosTabla, self.cursor, self.tab_EdicionTabla)
         self.arbol.setHeaderLabel(self.dsn_name)
         self.cargar_esquemas_y_tablas()
@@ -70,12 +69,13 @@ class InterfazSgbd(QMainWindow):
         self.tab_EdicionTabla.setRowCount(0)
         self.tab_EdicionTabla.setColumnCount(1)
         self.tab_objetos.setHorizontalHeaderLabels(["Nombre de la tabla"])
+        self.tab_objetos.resizeColumnsToContents()
         self.arbol.itemClicked.connect(self.tabla_objetos_llenar)
         self.arbol.itemClicked.connect(self.mostrar_informacion_esquema)
         self.tab_objetos.itemClicked.connect(self.mostrar_informacion_tabla_seleccionada)
         self.tab_objetos.itemDoubleClicked.connect(self.cambiar_a_ventana_indice_2)
         self.btn_abrir_tabla.clicked.connect(self.abrir_tabla_seleccionada)
-        self.btn_modificar_tabla.clicked.connect(self.modificar_tabla)
+        self.btn_modificar_tabla.clicked.connect(self.cargar_llavesPrimarias_combobox)
         self.btn_salir_edicion.clicked.connect(self.salir_ventana_principal)
         self.btn_salir_datos.clicked.connect(self.salir_ventana_principal)
 
@@ -195,6 +195,25 @@ class InterfazSgbd(QMainWindow):
         else:
             self.mostrar_mensaje("No se pudo encontrar el esquema para la tabla seleccionada.")
 
+    def abrir_tabla_seleccionada(self):
+        # Verifica si hay alguna fila seleccionada en tab_objetos
+        if self.tab_objetos.currentRow() != -1:  # -1 significa que ninguna fila está seleccionada
+            self.ventanas_tablas.setCurrentIndex(2)
+            # Obtener el nombre de la tabla seleccionada
+            tabla_seleccionada = self.tab_objetos.item(self.tab_objetos.currentRow(), 0).text()
+
+            # Obtener el nombre del esquema de la tabla seleccionada
+            nombre_del_esquema = self._obtener_esquema_de_tabla_seleccionada(tabla_seleccionada)
+
+            if nombre_del_esquema:
+                self.sentencias_sql.cargar_datos_tabla(
+                nombre_del_esquema, tabla_seleccionada, self.conn, self.dsn_name)
+            else:
+                self.mostrar_mensaje("No se pudo encontrar el esquema para la tabla seleccionada.")
+        else:
+            # Opcional: Mostrar un mensaje de alerta si ninguna fila está seleccionada
+            self.mostrar_mensaje("Por favor, seleccione una tabla antes de presionar 'ENTRAR A MODIFICACION DE DATOS DE LA TABLA'.")
+
     def salir_ventana_principal(self):
         self.ventanas_tablas.setCurrentIndex(0)
 
@@ -222,25 +241,6 @@ class InterfazSgbd(QMainWindow):
             error_details = traceback.format_exc()
             print(f"Ocurrió un error: {str(error_details)}")
             # Opcionalmente, puedes imprimir el error completo para propósitos de depuración
-
-    def abrir_tabla_seleccionada(self):
-        # Verifica si hay alguna fila seleccionada en tab_objetos
-        if self.tab_objetos.currentRow() != -1:  # -1 significa que ninguna fila está seleccionada
-            self.ventanas_tablas.setCurrentIndex(2)
-            # Obtener el nombre de la tabla seleccionada
-            tabla_seleccionada = self.tab_objetos.item(self.tab_objetos.currentRow(), 0).text()
-
-            # Obtener el nombre del esquema de la tabla seleccionada
-            nombre_del_esquema = self._obtener_esquema_de_tabla_seleccionada(tabla_seleccionada)
-
-            if nombre_del_esquema:
-                self.sentencias_sql.cargar_datos_tabla(
-                nombre_del_esquema, tabla_seleccionada, self.conn, self.dsn_name)
-            else:
-                self.mostrar_mensaje("No se pudo encontrar el esquema para la tabla seleccionada.")
-        else:
-            # Opcional: Mostrar un mensaje de alerta si ninguna fila está seleccionada
-            self.mostrar_mensaje("Por favor, seleccione una tabla antes de presionar 'ENTRAR A MODIFICACION DE DATOS DE LA TABLA'.")
 
     def _obtener_comentario_tabla(self, esquema, tabla):
         query = f"""
@@ -305,8 +305,6 @@ class SentenciasSQL:
             return f"SHOW TABLES FROM {esquema}"
         else:
             raise ValueError(f"No se soporta el driver: {self.dbms_name}")
-
-    import re
 
     def carga_datos_tabla_diseño(self, nombre_del_esquema, tabla_seleccionada, conn, dsn_name):
         try:
@@ -408,6 +406,7 @@ class SentenciasSQL:
             # En caso de error, imprimir el error para diagnóstico
             print(f"Error al cargar la tabla {tabla_seleccionada} en el esquema {nombre_del_esquema}: {e}")
 
+
 class EsquemaBaseDatos:
     def __init__(self, conn):
         self.conn = conn
@@ -429,10 +428,6 @@ class TablasEsquema:
         self.cursor.execute(query)
         return [row[0] for row in self.cursor.fetchall()]
 
-class InformacionBaseDatos:
-    def __init__(self, conn):
-        self.conn = conn
-        self.cursor = self.conn.cursor()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

@@ -337,7 +337,6 @@ class MainApp(QMainWindow):
 
     def cargar_llaves_en_combobox(self, nombre_tabla, tabla_a_excluir=None):
         """Carga las llaves primarias de una tabla en el QComboBox."""
-        print("cargar_llaves_en_combobox se está ejecutando")  # Añade esta línea
         llaves = self.obtener_llaves_primarias(nombre_tabla)
 
         # Si la tabla actual es la misma que la tabla a excluir, no agregues sus llaves al combobox
