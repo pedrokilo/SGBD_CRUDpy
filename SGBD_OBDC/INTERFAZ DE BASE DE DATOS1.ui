@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1004</width>
+    <width>698</width>
     <height>447</height>
    </rect>
   </property>
@@ -91,19 +91,6 @@
      <string>BORRAR CAMPO</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="btn_llave_primaria">
-    <property name="geometry">
-     <rect>
-      <x>370</x>
-      <y>30</y>
-      <width>111</width>
-      <height>28</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>LLAVE PRIMARIA</string>
-    </property>
-   </widget>
    <widget class="QPushButton" name="btn_guardar">
     <property name="geometry">
      <rect>
@@ -127,7 +114,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>SALIR</string>
+     <string>CANCELAR</string>
     </property>
    </widget>
    <widget class="QGroupBox" name="groupBox_3">
@@ -179,7 +166,7 @@
      </property>
     </widget>
    </widget>
-   <widget class="QPushButton" name="pushButton">
+   <widget class="QPushButton" name="btn_insertar_campo">
     <property name="geometry">
      <rect>
       <x>120</x>
@@ -190,29 +177,6 @@
     </property>
     <property name="text">
      <string>INSERTAR CAMPO</string>
-    </property>
-   </widget>
-  </widget>
-  <widget class="QGroupBox" name="gbox_ldd">
-   <property name="geometry">
-    <rect>
-     <x>670</x>
-     <y>10</y>
-     <width>301</width>
-     <height>411</height>
-    </rect>
-   </property>
-   <property name="title">
-    <string>LDD</string>
-   </property>
-   <widget class="QTextEdit" name="textosentenciasql">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>20</y>
-      <width>281</width>
-      <height>371</height>
-     </rect>
     </property>
    </widget>
   </widget>

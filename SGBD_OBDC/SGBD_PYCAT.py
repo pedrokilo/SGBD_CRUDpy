@@ -1,11 +1,11 @@
-import functools
 import sys
 import traceback
 import pyodbc
 import re
+from PyQt5 import Qt
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QLineEdit, QTreeWidgetItem, QTableWidgetItem, \
     QTableWidget, QStackedWidget, QComboBox, QSpinBox, QCheckBox, QDoubleSpinBox, QRadioButton, QDialog, QLabel, \
-    QPushButton, QVBoxLayout
+    QPushButton, QVBoxLayout, QTextEdit
 from PyQt5.uic import loadUi
 
 class InicioSesion(QMainWindow):
@@ -304,11 +304,21 @@ class InterfazSgbd(QMainWindow):
         if not self.arbol.currentItem():
             self.mostrar_mensaje("Debe seleccionar un esquema antes de crear una tabla.")
             return
+
         ventana_crear_tabla = VentanaCrearTabla()
         if ventana_crear_tabla.exec_() == QDialog.Accepted:
-            # La ventana emergente se cerró con "Aceptar", realiza la creación de la tabla aquí
-            nombre_tabla = ventana_crear_tabla.le_nombre_tabla.text()
-            comentario_tabla = ventana_crear_tabla.le_comentario_tabla.text()
+            # La ventana fue aceptada (se hizo clic en "Crear")
+            # Ahora puedes obtener los datos de la tabla creada
+            nombre_tabla = ventana_crear_tabla.nombre_tabla_creada
+            comentario_tabla = ventana_crear_tabla.comentario_tabla_creada
+
+            # Abre la ventana InsertadoEnTabla con los datos obtenidos
+            self.abrir_insertado_en_tabla(nombre_tabla, comentario_tabla)
+
+    def abrir_insertado_en_tabla(self, nombre_tabla, comentario_tabla):
+        insertado_en_tabla = InsertadoEnTabla()
+        insertado_en_tabla.set_datos_tabla(nombre_tabla, comentario_tabla)
+        insertado_en_tabla.show()
 
     def borrar_esquema_seleccionado(self):
         # Obtén el esquema seleccionado del árbol
@@ -542,6 +552,22 @@ class SentenciasSQL:
         tablas = [row[0] for row in self.cursor.fetchall()]
         return tablas
 
+    def creacion_tabla_en_esquema(self, nombre_tabla, comentario_tabla, columnas):
+        try:
+            # Construye la sentencia SQL para crear la tabla
+            # Utiliza columnas para construir la definición de la tabla
+            columnas_definicion = ", ".join(columnas)
+            sql = f"CREATE TABLE `{nombre_tabla}` ({columnas_definicion}) COMMENT '{comentario_tabla}';"
+            self.cursor.execute(sql)
+            self.conn.commit()
+            return True
+        except Exception as e:
+            error_details = traceback.format_exc()
+            # En caso de error, imprime el error para diagnóstico
+            self.mostrar_mensaje(f"Error al crear la tabla {nombre_tabla}: {str(e)}\nDetalles:\n{error_details}")
+            print(f"Error al crear la tabla {nombre_tabla}: {error_details}")
+            return False
+
     def borrar_tabla_objeto_en_esquema(self, nombre_esquema, nombre_tabla_objeto):
         # Aquí debes ejecutar una sentencia SQL para eliminar una tabla u objeto específico en el esquema.
         # Por ejemplo:
@@ -646,6 +672,7 @@ class TablasEsquema:
         self.cursor.execute(query)
         return [row[0] for row in self.cursor.fetchall()]
 
+
 class VentanaCrearTabla(QDialog):
     def __init__(self):
         super().__init__()
@@ -677,23 +704,84 @@ class VentanaCrearTabla(QDialog):
         nombre_tabla = self.le_nombre_tabla.text()
         comentario_tabla = self.le_comentario_tabla.text()
 
-        # Realiza la operación de creación de la tabla en la base de datos aquí
-        # Debes utilizar la información ingresada (nombre_tabla y comentario_tabla) para crear la tabla
+        # Configura los valores en la ventana InsertadoEnTabla
+        self.insertar_en_tabla = InsertadoEnTabla(nombre_tabla, comentario_tabla)
+        self.insertar_en_tabla.show()
 
-        # Cierra la ventana emergente después de crear la tabla
-        self.accept()
 
 class InsertadoEnTabla(QDialog):
     def __init__(self):
         super().__init__()
-        loadUi("INTERFAZ DE BASE DE DATOS0.ui", self)
-        self.le_nombre_tabla = self.findChild(QLineEdit, 'le_nombre_tabla')
-        self.le_comentario_tabla = self.findChild(QLineEdit, 'le_comentario_tabla')
+        loadUi("INTERFAZ DE BASE DE DATOS1.ui", self)
+        self.tab_AniadirColumna.itemChanged.connect(self.guardar_columnas)
+        self.columnas = []  # Lista para almacenar los datos de las columnas
+        self.fila_actual = 0  # Variable para llevar un registro de las filas insertadas
+        self.btn_aniadir_fila.clicked.connect(self.btn_aniadir_fila_clicked)
+        self.btn_insertar_campo.clicked.connect(self.btn_insertar_campo_clicked)
+        self.btn_borrar_fila.clicked.connect(self.btn_borrar_fila_clicked)
+        self.btn_guardar.clicked.connect(self.btn_guardar_clicked)
 
-    def obtener_datos_tabla(self):
-        nombre_tabla = self.le_nombre_tabla.text()
-        comentario_tabla = self.le_comentario_tabla.text()
-        return nombre_tabla, comentario_tabla
+    def btn_aniadir_fila_clicked(self):
+        self.tab_AniadirColumna.insertRow(self.fila_actual)
+        self.fila_actual += 1
+
+    def btn_insertar_campo_clicked(self):
+        nombre_columna = self.tab_AniadirColumna.item(self.fila_actual - 1, 0).text()
+        tipo_columna = self.tab_AniadirColumna.cellWidget(self.fila_actual - 1, 1).currentText()
+        tamano_columna = self.tab_AniadirColumna.cellWidget(self.fila_actual - 1, 2).value()
+        not_null = self.tab_AniadirColumna.cellWidget(self.fila_actual - 1, 3).isChecked()
+        llave = "(PK)" if self.tab_AniadirColumna.cellWidget(self.fila_actual - 1, 4).isChecked() else ""
+        comentario_columna = self.tab_AniadirColumna.item(self.fila_actual - 1, 5).text()
+
+        columna_sql = f"{nombre_columna} {tipo_columna}"
+        if tamano_columna:
+            columna_sql += f"({tamano_columna})"
+        if not_null:
+            columna_sql += " NOT NULL"
+        if llave:
+            columna_sql += f" {llave}"
+        if comentario_columna:
+            columna_sql += f" COMMENT '{comentario_columna}'"
+
+        self.columnas.append(columna_sql)
+
+    def btn_borrar_fila_clicked(self):
+        if self.fila_actual > 0:
+            self.tab_AniadirColumna.removeRow(self.fila_actual - 1)
+            self.columnas.pop()
+            self.fila_actual -= 1
+
+    def btn_guardar_clicked(self):
+        # Aquí debes implementar cómo procesar las columnas guardadas, por ejemplo:
+        self.guardar_columnas()
+        self.close()
+
+    def guardar_columnas(self):
+        # Este método se llama cuando cambia un elemento en la tabla
+        # Actualiza la lista de columnas cada vez que se modifica un elemento
+        self.columnas = []
+        for fila in range(self.tab_AniadirColumna.rowCount()):
+            nombre_columna = self.tab_AniadirColumna.item(fila, 0).text()
+            tipo_columna = self.tab_AniadirColumna.cellWidget(fila, 1).currentText()
+            tamano_columna = self.tab_AniadirColumna.cellWidget(fila, 2).value()
+            not_null = self.tab_AniadirColumna.cellWidget(fila, 3).isChecked()
+            llave = "(PK)" if self.tab_AniadirColumna.cellWidget(fila, 4).isChecked() else ""
+            comentario_columna = self.tab_AniadirColumna.item(fila, 5).text()
+
+            columna_sql = f"{nombre_columna} {tipo_columna}"
+            if tamano_columna:
+                columna_sql += f"({tamano_columna})"
+            if not_null:
+                columna_sql += " NOT NULL"
+            if llave:
+                columna_sql += f" {llave}"
+            if comentario_columna:
+                columna_sql += f" COMMENT '{comentario_columna}'"
+
+            self.columnas.append(columna_sql)
+
+
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
