@@ -705,14 +705,17 @@ class VentanaCrearTabla(QDialog):
         comentario_tabla = self.le_comentario_tabla.text()
 
         # Configura los valores en la ventana InsertadoEnTabla
-        self.insertar_en_tabla = InsertadoEnTabla(nombre_tabla, comentario_tabla)
-        self.insertar_en_tabla.show()
+        insertar_en_tabla = InsertadoEnTabla(nombre_tabla, comentario_tabla)
+        insertar_en_tabla.accepted.connect(self.mostrar_ventana_crear_tabla)  # Conecta el evento de aceptar
+        insertar_en_tabla.show()
 
 
 class InsertadoEnTabla(QDialog):
-    def __init__(self):
+    def __init__(self, nombre_tabla, comentario_tabla):
         super().__init__()
         loadUi("INTERFAZ DE BASE DE DATOS1.ui", self)
+        self.nombre_tabla = nombre_tabla
+        self.comentario_tabla = comentario_tabla
         self.tab_AniadirColumna.itemChanged.connect(self.guardar_columnas)
         self.columnas = []  # Lista para almacenar los datos de las columnas
         self.fila_actual = 0  # Variable para llevar un registro de las filas insertadas
@@ -754,7 +757,7 @@ class InsertadoEnTabla(QDialog):
     def btn_guardar_clicked(self):
         # Aquí debes implementar cómo procesar las columnas guardadas, por ejemplo:
         self.guardar_columnas()
-        self.close()
+        self.accept()  # Acepta el diálogo y lo cierra
 
     def guardar_columnas(self):
         # Este método se llama cuando cambia un elemento en la tabla
