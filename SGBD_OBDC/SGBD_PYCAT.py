@@ -5,7 +5,7 @@ import re
 from PyQt5 import Qt
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QLineEdit, QTreeWidgetItem, QTableWidgetItem, \
     QTableWidget, QStackedWidget, QComboBox, QSpinBox, QCheckBox, QDoubleSpinBox, QRadioButton, QDialog, QLabel, \
-    QPushButton, QVBoxLayout, QTextEdit
+    QPushButton, QVBoxLayout, QTextEdit, QGroupBox
 from PyQt5.uic import loadUi
 
 class InicioSesion(QMainWindow):
@@ -82,6 +82,7 @@ class InterfazSgbd(QMainWindow):
         self.btn_abrir_tabla.clicked.connect(self.abrir_tabla_seleccionada)
         self.btn_salir_edicion.clicked.connect(self.salir_ventana_principal)
         self.btn_salir_datos.clicked.connect(self.salir_ventana_principal)
+        self.btn_borrar_tabla.clicked.connect(self.borrar_tabla_seleccionada)
 
     def cargar_esquemas_y_tablas(self):
         self.arbol.clear()
@@ -223,10 +224,10 @@ class InterfazSgbd(QMainWindow):
 
     def modificar_tabla(self):
         try:
-            # Cambiar al índice 1 del QStackedWidget
-            self.ventanas_tablas.setCurrentIndex(1)
             # Verifica si hay alguna fila seleccionada en tab_objetos
             if self.tab_objetos.currentRow() != -1:  # -1 significa que ninguna fila está seleccionada
+                # Cambiar al índice 1 del QStackedWidget
+                self.ventanas_tablas.setCurrentIndex(1)
                 # Obtener el nombre de la tabla seleccionada
                 tabla_seleccionada = self.tab_objetos.item(self.tab_objetos.currentRow(), 0).text()
 
@@ -342,6 +343,25 @@ class InterfazSgbd(QMainWindow):
                     self.mostrar_mensaje(f"No se pudo eliminar el esquema '{nombre_esquema}'.")
         else:
             self.mostrar_mensaje("Por favor, seleccione un esquema para eliminar.")
+
+    def borrar_tabla_seleccionada(self):
+        # Verifica si hay alguna fila seleccionada en tab_objetos
+        if self.tab_objetos.currentRow() != -1:  # -1 significa que ninguna fila está seleccionada
+            # Obtener el nombre de la tabla seleccionada
+            tabla_seleccionada = self.tab_objetos.item(self.tab_objetos.currentRow(), 0).text()
+
+            # Obtener el nombre del esquema de la tabla seleccionada
+            nombre_del_esquema = self._obtener_esquema_de_tabla_seleccionada(tabla_seleccionada)
+            if nombre_del_esquema:
+                if self.sentencias_sql.borrar_tabla_objeto_en_esquema(nombre_del_esquema, tabla_seleccionada):
+                    # Recarga la lista de esquemas después de eliminar
+                    self.cargar_esquemas_y_tablas()
+                    self.mostrar_mensaje(f"Se eliminó la tabla '{tabla_seleccionada}' exitosamente.")
+            else:
+                self.mostrar_mensaje("No se pudo encontrar el esquema para la tabla seleccionada.")
+        else:
+            # Opcional: Mostrar un mensaje de alerta si ninguna fila está seleccionada
+            self.mostrar_mensaje("Por favor, seleccione una tabla antes de borrar una tabla.")
 
     def mostrar_mensaje(self, mensaje):
         msg = QMessageBox()
@@ -568,10 +588,10 @@ class SentenciasSQL:
             print(f"Error al crear la tabla {nombre_tabla}: {error_details}")
             return False
 
-    def borrar_tabla_objeto_en_esquema(self, nombre_esquema, nombre_tabla_objeto):
+    def borrar_tabla_objeto_en_esquema(self, nombre_esquema, tabla_seleccionada):
         # Aquí debes ejecutar una sentencia SQL para eliminar una tabla u objeto específico en el esquema.
         # Por ejemplo:
-        sql = f"DROP TABLE `{nombre_esquema}`.`{nombre_tabla_objeto}`;"
+        sql = f"DROP TABLE `{nombre_esquema}`.`{tabla_seleccionada}`;"
         self.cursor.execute(sql)
         self.conn.commit()
 
@@ -672,7 +692,6 @@ class TablasEsquema:
         self.cursor.execute(query)
         return [row[0] for row in self.cursor.fetchall()]
 
-
 class VentanaCrearTabla(QDialog):
     def __init__(self):
         super().__init__()
@@ -706,32 +725,91 @@ class VentanaCrearTabla(QDialog):
 
         # Configura los valores en la ventana InsertadoEnTabla
         insertar_en_tabla = InsertadoEnTabla(nombre_tabla, comentario_tabla)
-        insertar_en_tabla.accepted.connect(self.mostrar_ventana_crear_tabla)  # Conecta el evento de aceptar
-        insertar_en_tabla.show()
+        insertar_en_tabla.exec_()  # Utiliza exec_() en lugar de show()
 
+    def mostrar_ventana_crear_tabla(self):
+        # Esta función se llama cuando se cierra la ventana InsertadoEnTabla
+        self.show()  # Vuelve a mostrar la ventana VentanaCrearTabla
 
 class InsertadoEnTabla(QDialog):
     def __init__(self, nombre_tabla, comentario_tabla):
         super().__init__()
-        loadUi("INTERFAZ DE BASE DE DATOS1.ui", self)
         self.nombre_tabla = nombre_tabla
         self.comentario_tabla = comentario_tabla
-        self.tab_AniadirColumna.itemChanged.connect(self.guardar_columnas)
-        self.columnas = []  # Lista para almacenar los datos de las columnas
-        self.fila_actual = 0  # Variable para llevar un registro de las filas insertadas
+        self.columnas = []
+        self.fila_actual = 0
+
+        # Establece el tamaño de la ventana según las dimensiones del archivo .ui
+        self.setGeometry(0, 0, 698, 447)
+
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle("DISEÑO DE NUEVO ATRIBUTO (COLUMNA)")
+        layout = QVBoxLayout()
+
+        self.tab_AniadirColumna = QTableWidget()
+        self.tab_AniadirColumna.setColumnCount(6)
+        self.tab_AniadirColumna.setHorizontalHeaderLabels(
+            ["Nombre", "Tipo", "Tamaño", "Not Null", "Llave", "Comentario"]
+        )
+
+        self.btn_aniadir_fila = QPushButton("AÑADIR FILA")
+        self.btn_insertar_campo = QPushButton("INSERTAR CAMPO")
+        self.btn_borrar_fila = QPushButton("BORRAR CAMPO")
+        self.btn_guardar = QPushButton("GUARDAR")
+        self.btn_salir = QPushButton("CANCELAR")
+
+        layout.addWidget(self.tab_AniadirColumna)
+        layout.addWidget(self.btn_aniadir_fila)
+        layout.addWidget(self.btn_insertar_campo)
+        layout.addWidget(self.btn_borrar_fila)
+        layout.addWidget(self.btn_guardar)
+        layout.addWidget(self.btn_salir)
+
+        # AGREGAR LLAVE FORANEA
+        self.label_22 = QLabel("añadir la llave primaria de la tabla:")
+        self.comboBox_TablasLlaves = QComboBox()
+        self.comboBox_TablasLlaves.addItems([" "])  # Ejemplo de elementos
+        self.btn_aniadir_llave = QPushButton("AÑADIR LLAVE A LA TABLA")
+
+        layout.addWidget(self.label_22)
+        layout.addWidget(self.comboBox_TablasLlaves)
+        layout.addWidget(self.btn_aniadir_llave)
+
+        self.setLayout(layout)
+
         self.btn_aniadir_fila.clicked.connect(self.btn_aniadir_fila_clicked)
         self.btn_insertar_campo.clicked.connect(self.btn_insertar_campo_clicked)
         self.btn_borrar_fila.clicked.connect(self.btn_borrar_fila_clicked)
         self.btn_guardar.clicked.connect(self.btn_guardar_clicked)
 
+
     def btn_aniadir_fila_clicked(self):
         self.tab_AniadirColumna.insertRow(self.fila_actual)
         self.fila_actual += 1
 
+        for columna in range(6):
+            if columna == 1:  # Tipo de dato (combobox)
+                combo = QComboBox()
+                combo.addItems(["INT", "VARCHAR", "DATE", "FLOAT", "BOOLEAN"])
+                self.tab_AniadirColumna.setCellWidget(self.fila_actual - 1, columna, combo)
+            elif columna == 2:  # Tamaño (combobox editable)
+                combo = QComboBox()
+                combo.setEditable(True)
+                combo.addItems(["", "10", "20", "30", "50"])
+                self.tab_AniadirColumna.setCellWidget(self.fila_actual - 1, columna, combo)
+            elif columna == 3 or columna == 4:  # Not Null y Llave (checkbox)
+                checkbox = QCheckBox()
+                self.tab_AniadirColumna.setCellWidget(self.fila_actual - 1, columna, checkbox)
+            else:
+                item = QTableWidgetItem()
+                self.tab_AniadirColumna.setItem(self.fila_actual - 1, columna, item)
+
     def btn_insertar_campo_clicked(self):
         nombre_columna = self.tab_AniadirColumna.item(self.fila_actual - 1, 0).text()
         tipo_columna = self.tab_AniadirColumna.cellWidget(self.fila_actual - 1, 1).currentText()
-        tamano_columna = self.tab_AniadirColumna.cellWidget(self.fila_actual - 1, 2).value()
+        tamano_columna = self.tab_AniadirColumna.cellWidget(self.fila_actual - 1, 2).currentText()
         not_null = self.tab_AniadirColumna.cellWidget(self.fila_actual - 1, 3).isChecked()
         llave = "(PK)" if self.tab_AniadirColumna.cellWidget(self.fila_actual - 1, 4).isChecked() else ""
         comentario_columna = self.tab_AniadirColumna.item(self.fila_actual - 1, 5).text()
@@ -755,18 +833,15 @@ class InsertadoEnTabla(QDialog):
             self.fila_actual -= 1
 
     def btn_guardar_clicked(self):
-        # Aquí debes implementar cómo procesar las columnas guardadas, por ejemplo:
         self.guardar_columnas()
-        self.accept()  # Acepta el diálogo y lo cierra
+        self.accept()
 
     def guardar_columnas(self):
-        # Este método se llama cuando cambia un elemento en la tabla
-        # Actualiza la lista de columnas cada vez que se modifica un elemento
         self.columnas = []
         for fila in range(self.tab_AniadirColumna.rowCount()):
             nombre_columna = self.tab_AniadirColumna.item(fila, 0).text()
             tipo_columna = self.tab_AniadirColumna.cellWidget(fila, 1).currentText()
-            tamano_columna = self.tab_AniadirColumna.cellWidget(fila, 2).value()
+            tamano_columna = self.tab_AniadirColumna.cellWidget(fila, 2).currentText()
             not_null = self.tab_AniadirColumna.cellWidget(fila, 3).isChecked()
             llave = "(PK)" if self.tab_AniadirColumna.cellWidget(fila, 4).isChecked() else ""
             comentario_columna = self.tab_AniadirColumna.item(fila, 5).text()
