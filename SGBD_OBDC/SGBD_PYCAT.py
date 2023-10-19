@@ -90,6 +90,11 @@ class InterfazSgbd(QMainWindow):
         self.btn_activar_mod_objetos.clicked.connect(self.activar_modificacion)
         self.btn_cancelar_mod_objetos.clicked.connect(self.cancelar_modificacion)
         self.btn_guardar_mod_objetos.clicked.connect(self.guardar_modificacion)
+        self.modo_edicion_activado = False  # Bandera para controlar el modo de edición
+
+        # Agregar una variable para almacenar el nombre de la tabla seleccionada al hacer doble clic
+        self.nombre_tabla_seleccionada = None  # Variable para almacenar el nombre de la tabla seleccionada
+        self.btn_activar_mod_objetos.clicked.connect(self.activar_edicion)
 
     def cargar_esquemas_y_tablas(self):
         self.arbol.clear()
@@ -104,6 +109,7 @@ class InterfazSgbd(QMainWindow):
 
     def tabla_objetos_llenar(self, item):
         esquema_seleccionado = item.parent().text(0) if item.parent() else item.text(0)
+        self.nombre_tabla_seleccionada = None  # Reiniciar la variable al cambiar de esquema
 
         self.tab_objetos.setRowCount(0)
         self.tab_objetos.setColumnCount(2)  # Agrega una columna adicional
@@ -126,8 +132,6 @@ class InterfazSgbd(QMainWindow):
 
     def mostrar_informacion_tabla_seleccionada(self, item):
         nombre_tabla = item.text()
-        # Aquí, necesitas encontrar el esquema correspondiente a la tabla seleccionada.
-        # Puedes hacerlo buscando el nombre de la tabla en el árbol y tomando el nombre del esquema padre.
         esquema_seleccionado = None
         root = self.arbol.invisibleRootItem()
         for i in range(root.childCount()):
@@ -136,6 +140,7 @@ class InterfazSgbd(QMainWindow):
                 tabla_item = esquema_item.child(j)
                 if tabla_item.text(0) == nombre_tabla:
                     esquema_seleccionado = esquema_item.text(0)
+                    self.nombre_tabla_seleccionada = nombre_tabla  # Almacena el nombre de la tabla seleccionada
                     break
             if esquema_seleccionado:
                 break
@@ -153,7 +158,7 @@ class InterfazSgbd(QMainWindow):
                          f'\n\nComentario:\n\n"{comentario_tabla}"\n\n')
 
             self.label_informacion.setText(info_text)
-        else:
+        elif self.modo_edicion_activado == False:
             # Si no se encuentra el esquema correspondiente, muestra un mensaje o toma alguna acción apropiada.
             self.mostrar_mensaje("Lo que has seleccionado es un comentario o era una tabla que ya no existe en el esquema actual.")
 
@@ -178,6 +183,10 @@ class InterfazSgbd(QMainWindow):
         self.label_informacion.setText(info_text)
         self.stackedWidget.setCurrentIndex(0)  # Asegúrate de que se muestra la página correcta en tu QStackedWidget.
 
+    def guardar_nombre_tabla_seleccionada(self, item):
+        # Al hacer doble clic en una casilla, almacenar el nombre de la tabla seleccionada
+        self.nombre_tabla_seleccionada = item.text() if item else None
+
     def seleccionar_item_arbol(self, esquema, tabla):
         root = self.arbol.invisibleRootItem()
         for i in range(root.childCount()):
@@ -200,21 +209,37 @@ class InterfazSgbd(QMainWindow):
         return None
 
     def cambiar_a_ventana_indice_2(self):
-        # Cambia a la ventana con índice 2
-        self.ventanas_tablas.setCurrentIndex(2)
+         if not self.modo_edicion_activado:
+            # Cambia a la ventana con índice 2
+            self.ventanas_tablas.setCurrentIndex(2)
 
-        # Obtener el nombre de la tabla seleccionada
-        tabla_seleccionada = self.tab_objetos.item(self.tab_objetos.currentRow(), 0).text()
+            # Obtener el nombre de la tabla seleccionada
+            tabla_seleccionada = self.tab_objetos.item(self.tab_objetos.currentRow(), 0).text()
 
-        # Obtener el nombre del esquema de la tabla seleccionada
-        nombre_del_esquema = self._obtener_esquema_de_tabla_seleccionada(tabla_seleccionada)
+            # Obtener el nombre del esquema de la tabla seleccionada
+            nombre_del_esquema = self._obtener_esquema_de_tabla_seleccionada(tabla_seleccionada)
 
-        # Carga los datos en tab_DatosTabla
-        if nombre_del_esquema:
-            self.sentencias_sql.cargar_datos_tabla(
-                nombre_del_esquema, tabla_seleccionada, self.conn, self.dsn_name)
-        else:
-            self.mostrar_mensaje("No se pudo encontrar el esquema para la tabla seleccionada.")
+            # Carga los datos en tab_DatosTabla
+            if nombre_del_esquema:
+                self.sentencias_sql.cargar_datos_tabla(
+                    nombre_del_esquema, tabla_seleccionada, self.conn, self.dsn_name)
+            else:
+                self.mostrar_mensaje("No se pudo encontrar el esquema para la tabla seleccionada.")
+
+    def activar_edicion(self):
+        # Al presionar el botón "Activar", guardar el nombre de la tabla seleccionada
+        fila_seleccionada = self.tab_objetos.currentRow()
+        if fila_seleccionada >= 0:
+            item_seleccionado = self.arbol.currentItem()
+            if item_seleccionado:
+                self.nombre_tabla_seleccionada = item_seleccionado.text(0)
+            else:
+                # Si no hay elemento seleccionado en el árbol, muestra un mensaje de error o manejo adecuado.
+                self.mostrar_mensaje("Seleccione una tabla en el árbol antes de activar la edición.")
+                return
+
+            # Habilitar la edición de la tabla
+            self.tab_objetos.setEditTriggers(QAbstractItemView.DoubleClicked)
 
     def abrir_tabla_seleccionada(self):
         # Verifica si hay alguna fila seleccionada en tab_objetos
@@ -237,6 +262,7 @@ class InterfazSgbd(QMainWindow):
 
     def activar_modificacion(self):
         # Habilitar la edición de las celdas de la tabla tab_objetos
+        self.modo_edicion_activado = True
         self.tab_objetos.setEditTriggers(QAbstractItemView.DoubleClicked)
 
     def cancelar_modificacion(self):
@@ -244,20 +270,32 @@ class InterfazSgbd(QMainWindow):
         self.tab_objetos.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
     def guardar_modificacion(self):
-        if self.tab_objetos.editTriggers() == QAbstractItemView.DoubleClicked:
-            fila_seleccionada = self.tab_objetos.currentRow()
-            if fila_seleccionada >= 0:
-                nombre_tabla = self.tab_objetos.item(fila_seleccionada, 0).text()
-                nuevo_nombre = self.tab_objetos.item(fila_seleccionada, 0).text()
-                nuevo_comentario = self.tab_objetos.item(fila_seleccionada, 1).text()
+        # Obtener los valores de la fila actualmente seleccionada en la tabla
+        fila_seleccionada = self.tab_objetos.currentRow()
+        if fila_seleccionada == -1:
+            return
 
-                # Llamar al método de SentenciasSQL para modificar la tabla en la base de datos
-                if self.sentencias_sql.modificar_tabla_objetos(nombre_tabla, nuevo_nombre, nuevo_comentario):
-                    # Deshabilitar la edición después de guardar
-                    self.tab_objetos.setEditTriggers(QAbstractItemView.NoEditTriggers)
-                    self.mostrar_mensaje("Cambios guardados con éxito.")
-                else:
-                    self.mostrar_mensaje("No se pudo guardar los cambios.")
+        # Obtener el nuevo nombre y comentario de las celdas de la fila
+        nuevo_nombre = self.tab_objetos.item(fila_seleccionada, 0).text()
+        nuevo_comentario = self.tab_objetos.item(fila_seleccionada, 1).text()
+
+        # Obtener el esquema y nombre de la tabla seleccionada desde el árbol
+        item_seleccionado = self.arbol.currentItem()
+        if not item_seleccionado or not item_seleccionado.parent():
+            # No se seleccionó un esquema, no se puede realizar la modificación
+            self.mostrar_mensaje("Por favor, seleccione un esquema antes de guardar la modificación.")
+            return
+
+        esquema_seleccionado = item_seleccionado.parent().text(0)
+        nombre_tabla_seleccionada = item_seleccionado.text(0)
+
+        # Llamar a la función para modificar la tabla en SentenciasSQL
+        if self.sentencias_sql.modificar_tabla_objetos(esquema_seleccionado, nombre_tabla_seleccionada, nuevo_nombre,
+                                                       nuevo_comentario):
+            self.mostrar_mensaje("Modificación guardada exitosamente.")
+            self.tab_objetos.clearSelection()
+        else:
+            self.mostrar_mensaje("Error al guardar la modificación de la tabla.")
 
     def salir_ventana_principal(self):
         self.ventanas_tablas.setCurrentIndex(0)
@@ -639,26 +677,31 @@ class SentenciasSQL:
         tablas = [row[0] for row in self.cursor.fetchall()]
         return tablas
 
-    def modificar_tabla_objetos(self, nombre_tabla, nuevo_nombre, nuevo_comentario):
+    def modificar_tabla_objetos(self, esquema, nombre_tabla, nuevo_nombre, nuevo_comentario):
         try:
-            # Modificar el comentario de la tabla
-            if nuevo_comentario:
-                comentario_sql = f"ALTER TABLE {nombre_tabla} COMMENT = '{nuevo_comentario}';"
-                self.cursor.execute(comentario_sql)
-                self.conn.commit()
-
-            # Modificar el nombre de la tabla
+            # Comprueba si se modificó el nombre de la tabla
             if nuevo_nombre != nombre_tabla:
-                nombre_sql = f"ALTER TABLE {nombre_tabla} RENAME TO {nuevo_nombre};"
-                self.cursor.execute(nombre_sql)
+                # Renombra la tabla
+                query_rename = f"ALTER TABLE {esquema}.{nombre_tabla} RENAME TO {esquema}.{nuevo_nombre};"
+                self.cursor.execute(query_rename)
                 self.conn.commit()
 
-            return True  # Indicar que la modificación se realizó con éxito
+            if nuevo_nombre:
+                if nuevo_comentario:
+                    # Modifica el comentario de la tabla
+                    query_comment = f"ALTER TABLE {esquema}.{nuevo_nombre} COMMENT = '{nuevo_comentario}';"
+                    self.cursor.execute(query_comment)
+                    self.conn.commit()
+            else:
+                query_comment = f"ALTER TABLE {esquema}.{nombre_tabla} COMMENT = '{nuevo_comentario}';"
+                self.cursor.execute(query_comment)
+                self.conn.commit()
+
+            return True
         except Exception as e:
-            # Manejar cualquier excepción que pueda ocurrir durante la modificación
-            print(f"Error al modificar la tabla: {str(e)}")
-            self.conn.rollback()  # Revertir cualquier cambio en caso de error
-            return False  # Indicar que la modificación falló
+            error_details = traceback.format_exc()
+            print(f"Error al modificar la tabla: {str(error_details)}")
+            return False
 
     def creacion_tabla_en_esquema(self, nombre_tabla, comentario_tabla, columnas):
         try:

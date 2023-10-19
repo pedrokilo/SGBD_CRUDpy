@@ -175,7 +175,7 @@
        <property name="title">
         <string>MODIFICACION DE LA TABLA</string>
        </property>
-       <widget class="QPushButton" name="pushButton_2">
+       <widget class="QPushButton" name="btn_activar_mod_objetos">
         <property name="geometry">
          <rect>
           <x>20</x>
@@ -188,7 +188,7 @@
          <string>ACTIVAR</string>
         </property>
        </widget>
-       <widget class="QPushButton" name="pushButton_3">
+       <widget class="QPushButton" name="btn_cancelar_mod_objetos">
         <property name="geometry">
          <rect>
           <x>240</x>
@@ -201,7 +201,7 @@
          <string>CANCELAR</string>
         </property>
        </widget>
-       <widget class="QPushButton" name="pushButton_4">
+       <widget class="QPushButton" name="btn_guardar_mod_objetos">
         <property name="geometry">
          <rect>
           <x>130</x>
