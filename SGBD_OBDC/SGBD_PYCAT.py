@@ -94,6 +94,9 @@ class InterfazSgbd(QMainWindow):
         # Agregar una variable para almacenar el nombre de la tabla seleccionada al hacer doble clic
         self.nombre_tabla_seleccionada = None  # Variable para almacenar el nombre de la tabla seleccionada
         self.btn_activar_mod_objetos.clicked.connect(self.activar_edicion)
+        self.btn_borrar_campo.clicked.connect(self.LDD_borrar_campo_seleccionado)
+        self.actualizar_ldd.clicked.connect(self.modificar_tabla)
+        self.actualizar_lmd.clicked.connect(self.abrir_tabla_seleccionada)
 
     def cargar_esquemas_y_tablas(self):
         self.arbol.clear()
@@ -114,7 +117,8 @@ class InterfazSgbd(QMainWindow):
         self.tab_objetos.setColumnCount(2)  # Agrega una columna adicional
 
         tablas = self.tabla_esquema.obtener_tablas_de_esquema(esquema_seleccionado)
-
+        self.lbl_nombres_objetos.setText(
+            f"Estás viendo las tablas del esquema '{esquema_seleccionado}'")
         for tabla in tablas:
             row_position = self.tab_objetos.rowCount()
             self.tab_objetos.insertRow(row_position)
@@ -209,21 +213,7 @@ class InterfazSgbd(QMainWindow):
 
     def cambiar_a_ventana_indice_2(self):
          if not self.modo_edicion_activado:
-            # Cambia a la ventana con índice 2
-            self.ventanas_tablas.setCurrentIndex(2)
-
-            # Obtener el nombre de la tabla seleccionada
-            tabla_seleccionada = self.tab_objetos.item(self.tab_objetos.currentRow(), 0).text()
-
-            # Obtener el nombre del esquema de la tabla seleccionada
-            nombre_del_esquema = self._obtener_esquema_de_tabla_seleccionada(tabla_seleccionada)
-
-            # Carga los datos en tab_DatosTabla
-            if nombre_del_esquema:
-                self.sentencias_sql.cargar_datos_tabla(
-                    nombre_del_esquema, tabla_seleccionada, self.conn, self.dsn_name)
-            else:
-                self.mostrar_mensaje("No se pudo encontrar el esquema para la tabla seleccionada.")
+            self.abrir_tabla_seleccionada()
 
     def activar_edicion(self):
         # Al presionar el botón "Activar", guardar el nombre de la tabla seleccionada
@@ -253,6 +243,8 @@ class InterfazSgbd(QMainWindow):
             if nombre_del_esquema:
                 self.sentencias_sql.cargar_datos_tabla(
                 nombre_del_esquema, tabla_seleccionada, self.conn, self.dsn_name)
+                self.lbl_nombre_tabla_LMD.setText(
+                    f"Estás en la tabla '{tabla_seleccionada}' del esquema '{nombre_del_esquema}'")
             else:
                 self.mostrar_mensaje("No se pudo encontrar el esquema para la tabla seleccionada.")
         else:
@@ -314,6 +306,7 @@ class InterfazSgbd(QMainWindow):
                 if nombre_del_esquema:
                     self.sentencias_sql.carga_datos_tabla_diseño(
                         nombre_del_esquema, tabla_seleccionada, self.conn, self.dsn_name)
+                    self.lbl_nombre_tabla_LDD.setText(f"Estás en la tabla '{tabla_seleccionada}' del esquema '{nombre_del_esquema}'")
                 else:
                     self.mostrar_mensaje("No se pudo encontrar el esquema para la tabla seleccionada.")
             else:
@@ -460,12 +453,43 @@ class InterfazSgbd(QMainWindow):
                 self._actualizar_vista_despues_de_borrar(nombre_del_esquema)
                 self.mostrar_mensaje(f"Se eliminó la tabla '{tabla_seleccionada}' exitosamente.")
 
+    def LDD_borrar_campo_seleccionado(self):
+        # Si no hay una tabla seleccionada, muestra un mensaje y termina.
+        if self.tab_EdicionTabla.currentRow() == -1:
+            self.mostrar_mensaje("Por favor, seleccione una columna antes de borrar.")
+            return
+        tabla_seleccionada = self.tab_objetos.item(self.tab_objetos.currentRow(), 0).text()
+        nombre_del_esquema = self._obtener_esquema_de_tabla_seleccionada(tabla_seleccionada)
+        columna_seleccionada = self.tab_EdicionTabla.item(self.tab_EdicionTabla.currentRow(), 0).text()
+        # Si no se puede encontrar el esquema para la tabla seleccionada, muestra un mensaje y termina.
+        if not tabla_seleccionada:
+            self.mostrar_mensaje("No se pudo encontrar la tabla seleccionada.")
+            return
+        respuesta = QMessageBox.question(
+        self,"Confirmación",
+        f"¿Está seguro de eliminar la columna {columna_seleccionada} de la tabla '{tabla_seleccionada}'?",
+        QMessageBox.Yes | QMessageBox.No,
+        QMessageBox.No
+        )
+
+        # Si el usuario confirma, procede con la eliminación.
+        if respuesta == QMessageBox.Yes:
+          if self.sentencias_sql.borrar_columna_LDD(nombre_del_esquema, tabla_seleccionada,columna_seleccionada):
+              self._actualizar_vista_despues_de_borrar_LDD(tabla_seleccionada)
+              self.mostrar_mensaje(f"Se eliminó la tabla '{columna_seleccionada}' exitosamente.")
+
     def _actualizar_vista_despues_de_borrar(self, nombre_del_esquema):
         """ Actualiza la vista del árbol y selecciona el esquema después de borrar una tabla. """
         self.cargar_esquemas_y_tablas()
         self.tab_objetos.setRowCount(0)
         self.tab_objetos.update()
         self.tab_objetos.repaint()
+
+    def _actualizar_vista_despues_de_borrar_LDD(self,tabla_seleccionada):
+        self.cargar_esquemas_y_tablas()
+        self.tab_EdicionTabla.setRowCount(0)
+        self.tab_EdicionTabla.update()
+        self.tab_EdicionTabla.repaint()
 
     def mostrar_mensaje(self, mensaje):
         msg = QMessageBox()
@@ -746,6 +770,35 @@ class SentenciasSQL:
         except Exception as e:
             error_details = traceback.format_exc()
             self.mostrar_mensaje(f"Error al intentar eliminar la tabla {tabla_seleccionada}: {error_details}")
+
+    def borrar_columna_LDD(self, nombre_del_esquema, tabla_seleccionada, columna_seleccionada):
+        try:
+            # 1. Obtener todas las restricciones de clave externa que hacen referencia a la tabla objetivo
+            sql_constraints = f"""
+                                   SELECT CONSTRAINT_NAME, TABLE_NAME
+                                   FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+                                   WHERE REFERENCED_TABLE_NAME = '{tabla_seleccionada}'
+                                   AND REFERENCED_TABLE_SCHEMA = '{nombre_del_esquema}';
+                                   """
+            self.cursor.execute(sql_constraints)
+            constraints = self.cursor.fetchall()
+            constraints = list(constraints)
+
+            # 2. Eliminar todas las restricciones de clave externa encontradas
+            for constraint in constraints:
+                constraint_name = constraint[0]
+                referencing_table = constraint[1]
+                sql_drop_fk = f"ALTER TABLE `{nombre_del_esquema}`.`{referencing_table}` DROP FOREIGN KEY `{constraint_name}`;"
+                self.cursor.execute(sql_drop_fk)
+
+            self.cursor.execute(f"USE `{nombre_del_esquema}`;")
+            sql_drop_column = f"ALTER TABLE `{tabla_seleccionada}` DROP COLUMN `{columna_seleccionada}`;"
+            self.cursor.execute(sql_drop_column)
+            self.conn.commit()
+
+        except Exception as e:
+            error_details = traceback.format_exc()
+            self.mostrar_mensaje(f"Error al intentar eliminar la columna {columna_seleccionada}: {error_details}")
 
     def mostrar_mensaje(self, mensaje):
         msg = QMessageBox()
