@@ -91,7 +91,6 @@ class InterfazSgbd(QMainWindow):
         self.btn_cancelar_mod_objetos.clicked.connect(self.cancelar_modificacion)
         self.btn_guardar_mod_objetos.clicked.connect(self.guardar_modificacion)
         self.modo_edicion_activado = False  # Bandera para controlar el modo de edición
-
         # Agregar una variable para almacenar el nombre de la tabla seleccionada al hacer doble clic
         self.nombre_tabla_seleccionada = None  # Variable para almacenar el nombre de la tabla seleccionada
         self.btn_activar_mod_objetos.clicked.connect(self.activar_edicion)
