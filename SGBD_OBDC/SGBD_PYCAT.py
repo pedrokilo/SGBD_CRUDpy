@@ -3,9 +3,10 @@ import traceback
 import pyodbc
 import re
 from PyQt5 import Qt
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QLineEdit, QTreeWidgetItem, QTableWidgetItem, \
     QTableWidget, QStackedWidget, QComboBox, QSpinBox, QCheckBox, QDoubleSpinBox, QRadioButton, QDialog, QLabel, \
-    QPushButton, QVBoxLayout, QTextEdit, QGroupBox
+    QPushButton, QVBoxLayout, QTextEdit, QGroupBox, QAbstractItemView
 from PyQt5.uic import loadUi
 
 class InicioSesion(QMainWindow):
@@ -86,6 +87,9 @@ class InterfazSgbd(QMainWindow):
         self.btn_borrar_tabla.clicked.connect(self.borrar_tabla_seleccionada)
         self.btn_borrar_tabla.clicked.connect(self.cargar_esquemas_y_tablas)
         self.actualizar_todo.clicked.connect(self.cargar_esquemas_y_tablas)
+        self.btn_activar_mod_objetos.clicked.connect(self.activar_modificacion)
+        self.btn_cancelar_mod_objetos.clicked.connect(self.cancelar_modificacion)
+        self.btn_guardar_mod_objetos.clicked.connect(self.guardar_modificacion)
 
     def cargar_esquemas_y_tablas(self):
         self.arbol.clear()
@@ -230,6 +234,30 @@ class InterfazSgbd(QMainWindow):
         else:
             # Opcional: Mostrar un mensaje de alerta si ninguna fila está seleccionada
             self.mostrar_mensaje("Por favor, seleccione una tabla antes de presionar 'ENTRAR A MODIFICACION DE DATOS DE LA TABLA'.")
+
+    def activar_modificacion(self):
+        # Habilitar la edición de las celdas de la tabla tab_objetos
+        self.tab_objetos.setEditTriggers(QAbstractItemView.DoubleClicked)
+
+    def cancelar_modificacion(self):
+        # Deshabilitar la edición de las celdas de la tabla tab_objetos
+        self.tab_objetos.setEditTriggers(QAbstractItemView.NoEditTriggers)
+
+    def guardar_modificacion(self):
+        if self.tab_objetos.editTriggers() == QAbstractItemView.DoubleClicked:
+            fila_seleccionada = self.tab_objetos.currentRow()
+            if fila_seleccionada >= 0:
+                nombre_tabla = self.tab_objetos.item(fila_seleccionada, 0).text()
+                nuevo_nombre = self.tab_objetos.item(fila_seleccionada, 0).text()
+                nuevo_comentario = self.tab_objetos.item(fila_seleccionada, 1).text()
+
+                # Llamar al método de SentenciasSQL para modificar la tabla en la base de datos
+                if self.sentencias_sql.modificar_tabla_objetos(nombre_tabla, nuevo_nombre, nuevo_comentario):
+                    # Deshabilitar la edición después de guardar
+                    self.tab_objetos.setEditTriggers(QAbstractItemView.NoEditTriggers)
+                    self.mostrar_mensaje("Cambios guardados con éxito.")
+                else:
+                    self.mostrar_mensaje("No se pudo guardar los cambios.")
 
     def salir_ventana_principal(self):
         self.ventanas_tablas.setCurrentIndex(0)
@@ -610,6 +638,27 @@ class SentenciasSQL:
         self.cursor.execute(sql)
         tablas = [row[0] for row in self.cursor.fetchall()]
         return tablas
+
+    def modificar_tabla_objetos(self, nombre_tabla, nuevo_nombre, nuevo_comentario):
+        try:
+            # Modificar el comentario de la tabla
+            if nuevo_comentario:
+                comentario_sql = f"ALTER TABLE {nombre_tabla} COMMENT = '{nuevo_comentario}';"
+                self.cursor.execute(comentario_sql)
+                self.conn.commit()
+
+            # Modificar el nombre de la tabla
+            if nuevo_nombre != nombre_tabla:
+                nombre_sql = f"ALTER TABLE {nombre_tabla} RENAME TO {nuevo_nombre};"
+                self.cursor.execute(nombre_sql)
+                self.conn.commit()
+
+            return True  # Indicar que la modificación se realizó con éxito
+        except Exception as e:
+            # Manejar cualquier excepción que pueda ocurrir durante la modificación
+            print(f"Error al modificar la tabla: {str(e)}")
+            self.conn.rollback()  # Revertir cualquier cambio en caso de error
+            return False  # Indicar que la modificación falló
 
     def creacion_tabla_en_esquema(self, nombre_tabla, comentario_tabla, columnas):
         try:

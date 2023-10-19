@@ -67,8 +67,8 @@
        <widget class="QPushButton" name="btn_crear_tabla">
         <property name="geometry">
          <rect>
-          <x>220</x>
-          <y>30</y>
+          <x>230</x>
+          <y>20</y>
           <width>93</width>
           <height>28</height>
          </rect>
@@ -81,7 +81,7 @@
         <property name="geometry">
          <rect>
           <x>330</x>
-          <y>30</y>
+          <y>20</y>
           <width>111</width>
           <height>28</height>
          </rect>
@@ -611,13 +611,18 @@
        <string notr="true">1</string>
       </property>
      </column>
+     <item>
+      <property name="text">
+       <string>Nuevo elemento</string>
+      </property>
+     </item>
     </widget>
    </widget>
    <widget class="QPushButton" name="btn_crear_esquema">
     <property name="geometry">
      <rect>
       <x>20</x>
-      <y>560</y>
+      <y>550</y>
       <width>141</width>
       <height>28</height>
      </rect>
@@ -630,7 +635,7 @@
     <property name="geometry">
      <rect>
       <x>20</x>
-      <y>600</y>
+      <y>580</y>
       <width>141</width>
       <height>28</height>
      </rect>
@@ -650,19 +655,6 @@
     </property>
     <property name="text">
      <string>PRESIONAR DESPUES DE BORRAR UNA TABLA</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="pushButton">
-    <property name="geometry">
-     <rect>
-      <x>20</x>
-      <y>640</y>
-      <width>141</width>
-      <height>28</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>MODIFICAR ESQUEMA</string>
     </property>
    </widget>
   </widget>
