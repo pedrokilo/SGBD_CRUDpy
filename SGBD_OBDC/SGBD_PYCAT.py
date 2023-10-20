@@ -735,19 +735,6 @@ class SentenciasSQL:
             print(f"Error al modificar la tabla: {str(error_details)}")
             return False
 
-    def crear_tabla(self, sql_create_table):
-        try:
-            # Ejecuta la sentencia SQL para crear la tabla
-            self.cursor.execute(sql_create_table)
-            # Confirma la transacción para aplicar los cambios en la base de datos
-            self.conn.commit()
-            return True  # Devuelve True si la creación de la tabla fue exitosa
-        except Exception as e:
-            # En caso de error, realiza el manejo correspondiente, como imprimir el error o realizar un rollback
-            self.conn.rollback()
-            print(f"Error al crear la tabla: {str(e)}")
-            return False  # Devuelve False en caso de error
-
     def borrar_tabla_objeto_en_esquema(self, nombre_esquema, tabla_seleccionada):
         try:
             # 1. Obtener todas las restricciones de clave externa que hacen referencia a la tabla objetivo
