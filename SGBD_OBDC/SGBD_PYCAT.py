@@ -481,6 +481,9 @@ class InterfazSgbd(QMainWindow):
     def mostrar_ventana_crear_tabla(self):
         pass
 
+    def mostrar_ventana_crear_columnas(self):
+        pass
+
     def mostrar_mensaje(self, mensaje):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Information)
