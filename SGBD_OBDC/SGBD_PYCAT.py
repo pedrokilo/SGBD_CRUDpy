@@ -368,6 +368,22 @@ class InterfazSgbd(QMainWindow):
             else:
                 self.mostrar_mensaje(f"No se pudo eliminar el esquema '{nombre_esquema}' y sus objetos.")
 
+    def mostrar_ventana_crear_esquema(self):
+        ventana_crear_esquema = VentanaCrearEsquema()
+        if ventana_crear_esquema.exec_() == QDialog.Accepted:
+            # La ventana emergente se cerró con "Aceptar", realiza la creación del esquema aquí
+            nombre_esquema = ventana_crear_esquema.le_nombre_esquema.text()
+            characterset = ventana_crear_esquema.cb_characterset.currentText()
+
+            # Realiza la operación de creación del esquema en la base de datos aquí
+            # Llama al método para crear el esquema en la base de datos
+            if self.sentencias_sql.crear_esquema(nombre_esquema, characterset):
+                self.mostrar_mensaje(f"Se creó el esquema '{nombre_esquema}' con éxito.")
+                # Actualiza el árbol u otras partes de la interfaz según sea necesario
+                self.cargar_esquemas_y_tablas()
+            else:
+                self.mostrar_mensaje(f"No se pudo crear el esquema '{nombre_esquema}'.")
+
     def borrar_esquema_seleccionado(self):
         # Obtén el esquema seleccionado del árbol
         item_seleccionado = self.arbol.currentItem()
