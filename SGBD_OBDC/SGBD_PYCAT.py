@@ -1063,9 +1063,6 @@ class InsertadoEnTabla(QDialog):
 
             self.columnas.append(columna_sql)
 
-
-
-
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = InicioSesion()
