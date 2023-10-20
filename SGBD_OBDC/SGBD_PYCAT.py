@@ -500,6 +500,10 @@ class InterfazSgbd(QMainWindow):
     def mostrar_ventana_crear_columnas(self):
         pass
 
+    def modificacion_columnas(self):
+
+        pass
+
     def mostrar_mensaje(self, mensaje):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Information)
@@ -895,6 +899,8 @@ class TablasEsquema:
 
 class ventana_columnas_tabla(QDialog):
     def __init__(self):
+        super().__init__()
+        loadUi("INTERFAZ DE BASE DE DATOS1.ui", self)
         pass
 
 if __name__ == "__main__":
