@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>698</width>
+    <width>901</width>
     <height>447</height>
    </rect>
   </property>
@@ -18,12 +18,12 @@
     <rect>
      <x>20</x>
      <y>10</y>
-     <width>641</width>
+     <width>861</width>
      <height>411</height>
     </rect>
    </property>
    <property name="title">
-    <string>DISEÑO DE NUEVO ATRIBUTO (COLUMNA)</string>
+    <string>DISEÑO DE AGREGADO DE ATRIBUTO (COLUMNA)</string>
    </property>
    <widget class="QTableWidget" name="tab_AniadirColumna">
     <property name="geometry">
@@ -177,6 +177,65 @@
     </property>
     <property name="text">
      <string>INSERTAR CAMPO</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label">
+    <property name="geometry">
+     <rect>
+      <x>660</x>
+      <y>70</y>
+      <width>91</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>En el esquema:</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_2">
+    <property name="geometry">
+     <rect>
+      <x>680</x>
+      <y>50</y>
+      <width>55</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Estás:</string>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="cBox_esquemas">
+    <property name="geometry">
+     <rect>
+      <x>650</x>
+      <y>90</y>
+      <width>151</width>
+      <height>22</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_3">
+    <property name="geometry">
+     <rect>
+      <x>660</x>
+      <y>120</y>
+      <width>91</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Y en la tabla:</string>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="cBox_tablas">
+    <property name="geometry">
+     <rect>
+      <x>650</x>
+      <y>140</y>
+      <width>151</width>
+      <height>22</height>
+     </rect>
     </property>
    </widget>
   </widget>
