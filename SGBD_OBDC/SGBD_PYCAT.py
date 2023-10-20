@@ -90,13 +90,16 @@ class InterfazSgbd(QMainWindow):
         self.btn_activar_mod_objetos.clicked.connect(self.activar_modificacion)
         self.btn_cancelar_mod_objetos.clicked.connect(self.cancelar_modificacion)
         self.btn_guardar_mod_objetos.clicked.connect(self.guardar_modificacion)
-        self.modo_edicion_activado = False  # Bandera para controlar el modo de edición
-        # Agregar una variable para almacenar el nombre de la tabla seleccionada al hacer doble clic
+            # Agregar una variable para almacenar el nombre de la tabla seleccionada al hacer doble clic
         self.nombre_tabla_seleccionada = None  # Variable para almacenar el nombre de la tabla seleccionada
         self.btn_activar_mod_objetos.clicked.connect(self.activar_edicion)
         self.btn_borrar_campo.clicked.connect(self.LDD_borrar_campo_seleccionado)
         self.actualizar_ldd.clicked.connect(self.modificar_tabla)
         self.actualizar_lmd.clicked.connect(self.abrir_tabla_seleccionada)
+        self.tab_EdicionTabla.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.btn_activar_modificacion_2.clicked.connect(self.LDD_activar_modificacion_columnas)
+        self.btn_cancelar_modificacion_2.clicked.connect(self.LDD_cancelar_modificacion_columnas)
+        self.btn_guardar_modificacion_2.clicked.connect(self.LDD_guardar_modificacion_columna)
 
     def cargar_esquemas_y_tablas(self):
         self.arbol.clear()
@@ -252,13 +255,13 @@ class InterfazSgbd(QMainWindow):
             self.mostrar_mensaje("Por favor, seleccione una tabla antes de presionar 'ENTRAR A MODIFICACION DE DATOS DE LA TABLA'.")
 
     def activar_modificacion(self):
-        # Habilitar la edición de las celdas de la tabla tab_objetos
-        self.modo_edicion_activado = True
+        self.btn_activar_mod_objetos.setEnabled(False)
         self.tab_objetos.setEditTriggers(QAbstractItemView.DoubleClicked)
 
     def cancelar_modificacion(self):
         # Deshabilitar la edición de las celdas de la tabla tab_objetos
         self.tab_objetos.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.btn_activar_mod_objetos.setEnabled(True)
 
     def guardar_modificacion(self):
         # Obtener los valores de la fila actualmente seleccionada en la tabla
@@ -382,19 +385,15 @@ class InterfazSgbd(QMainWindow):
                 self.mostrar_mensaje(f"No se pudo crear el esquema '{nombre_esquema}'.")
 
     def mostrar_ventana_crear_tabla(self):
-        if not self.arbol.currentItem():
-            self.mostrar_mensaje("Debe seleccionar un esquema antes de crear una tabla.")
-            return
-
         ventana_crear_tabla = VentanaCrearTabla()
         if ventana_crear_tabla.exec_() == QDialog.Accepted:
             # La ventana fue aceptada (se hizo clic en "Crear")
             # Ahora puedes obtener los datos de la tabla creada
             nombre_tabla = ventana_crear_tabla.nombre_tabla_creada
             comentario_tabla = ventana_crear_tabla.comentario_tabla_creada
-
-            # Abre la ventana InsertadoEnTabla con los datos obtenidos
-            self.abrir_insertado_en_tabla(nombre_tabla, comentario_tabla)
+            nombre_del_esquema_actual = self.arbol.currentItem().text(0)
+            # Agrega el nombre del esquema actual a la ventana InsertadoEnTabla
+            ventana_crear_tabla.btn_guardar_clicked(nombre_tabla, nombre_del_esquema_actual, comentario_tabla)
 
     def abrir_insertado_en_tabla(self, nombre_tabla, comentario_tabla):
         insertado_en_tabla = InsertadoEnTabla()
@@ -454,7 +453,7 @@ class InterfazSgbd(QMainWindow):
                 self.mostrar_mensaje(f"Se eliminó la tabla '{tabla_seleccionada}' exitosamente.")
 
     def LDD_borrar_campo_seleccionado(self):
-        # Si no hay una tabla seleccionada, muestra un mensaje y termina.
+        # Si no hay una columna seleccionada, muestra un mensaje y termina.
         if self.tab_EdicionTabla.currentRow() == -1:
             self.mostrar_mensaje("Por favor, seleccione una columna antes de borrar.")
             return
@@ -477,6 +476,26 @@ class InterfazSgbd(QMainWindow):
           if self.sentencias_sql.borrar_columna_LDD(nombre_del_esquema, tabla_seleccionada,columna_seleccionada):
               self._actualizar_vista_despues_de_borrar_LDD(tabla_seleccionada)
               self.mostrar_mensaje(f"Se eliminó la tabla '{columna_seleccionada}' exitosamente.")
+
+    def LDD_activar_modificacion_columnas(self, tamaño_item, tipo_combobox):
+        self.btn_activar_modificacion_2.setEnabled(False)
+        tamaño_item.setEditable(True)
+        tipo_combobox.setEditable(True)
+        self.tab_EdicionTabla.setEditTriggers(QAbstractItemView.DoubleClicked)
+
+    def LDD_cancelar_modificacion_columnas(self, tamaño_item, tipo_combobox):
+        self.tab_EdicionTabla.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.btn_activar_modificacion_2.setEnabled(True)
+        tamaño_item.setEditable(False)
+        tipo_combobox.setEditable(False)
+
+    def LDD_guardar_modificacion_columna(self):
+        # Obtener los valores de la fila actualmente seleccionada en la tabla
+        fila_seleccionada = self.tab_objetos.currentRow()
+        if fila_seleccionada == -1:
+            return
+
+        pass
 
     def _actualizar_vista_despues_de_borrar(self, nombre_del_esquema):
         """ Actualiza la vista del árbol y selecciona el esquema después de borrar una tabla. """
@@ -726,21 +745,18 @@ class SentenciasSQL:
             print(f"Error al modificar la tabla: {str(error_details)}")
             return False
 
-    def creacion_tabla_en_esquema(self, nombre_tabla, comentario_tabla, columnas):
+    def crear_tabla(self, sql_create_table):
         try:
-            # Construye la sentencia SQL para crear la tabla
-            # Utiliza columnas para construir la definición de la tabla
-            columnas_definicion = ", ".join(columnas)
-            sql = f"CREATE TABLE `{nombre_tabla}` ({columnas_definicion}) COMMENT '{comentario_tabla}';"
-            self.cursor.execute(sql)
+            # Ejecuta la sentencia SQL para crear la tabla
+            self.cursor.execute(sql_create_table)
+            # Confirma la transacción para aplicar los cambios en la base de datos
             self.conn.commit()
-            return True
+            return True  # Devuelve True si la creación de la tabla fue exitosa
         except Exception as e:
-            error_details = traceback.format_exc()
-            # En caso de error, imprime el error para diagnóstico
-            self.mostrar_mensaje(f"Error al crear la tabla {nombre_tabla}: {str(e)}\nDetalles:\n{error_details}")
-            print(f"Error al crear la tabla {nombre_tabla}: {error_details}")
-            return False
+            # En caso de error, realiza el manejo correspondiente, como imprimir el error o realizar un rollback
+            self.conn.rollback()
+            print(f"Error al crear la tabla: {str(e)}")
+            return False  # Devuelve False en caso de error
 
     def borrar_tabla_objeto_en_esquema(self, nombre_esquema, tabla_seleccionada):
         try:
@@ -799,6 +815,9 @@ class SentenciasSQL:
         except Exception as e:
             error_details = traceback.format_exc()
             self.mostrar_mensaje(f"Error al intentar eliminar la columna {columna_seleccionada}: {error_details}")
+
+    def modificar_columna_LDD(self):
+        pass
 
     def mostrar_mensaje(self, mensaje):
         msg = QMessageBox()
@@ -989,7 +1008,6 @@ class InsertadoEnTabla(QDialog):
         self.btn_borrar_fila.clicked.connect(self.btn_borrar_fila_clicked)
         self.btn_guardar.clicked.connect(self.btn_guardar_clicked)
 
-
     def btn_aniadir_fila_clicked(self):
         self.tab_AniadirColumna.insertRow(self.fila_actual)
         self.fila_actual += 1
@@ -997,6 +1015,7 @@ class InsertadoEnTabla(QDialog):
         for columna in range(6):
             if columna == 1:  # Tipo de dato (combobox)
                 combo = QComboBox()
+                combo.setEditable(True)
                 combo.addItems(["INT", "VARCHAR", "DATE", "FLOAT", "BOOLEAN"])
                 self.tab_AniadirColumna.setCellWidget(self.fila_actual - 1, columna, combo)
             elif columna == 2:  # Tamaño (combobox editable)
@@ -1037,9 +1056,47 @@ class InsertadoEnTabla(QDialog):
             self.columnas.pop()
             self.fila_actual -= 1
 
-    def btn_guardar_clicked(self):
-        self.guardar_columnas()
-        self.accept()
+    def btn_guardar_clicked(self, nombre_tabla, nombre_del_esquema_actual, comentario_tabla):
+      try:
+        # Obtén el nombre del esquema desde algún lugar (por ejemplo, la clase InterfazSgbd)
+        nombre_del_esquema_actual = self.arbol.currentItem().text(0)
+        nombre_del_esquema = nombre_del_esquema_actual
+
+        # Verifica si la ventana VentanaCrearTabla está definida en el contexto
+        if hasattr(self.parent(), 'ventana_crear_tabla'):
+            # Obtén el nombre de la tabla y el comentario de la tabla desde la ventana VentanaCrearTabla
+            nombre_tabla = self.parent().le_nombre_tabla.text()
+            comentario_tabla = self.parent().le_comentario_tabla.text()
+
+            # Obtén las columnas definidas en la ventana InsertadoEnTabla
+            columnas = self.columnas
+
+            # Construye la sentencia SQL para crear la tabla
+            sql_create_table = f"USE {nombre_del_esquema};\n"  # Cambia "nombre_del_esquema" al nombre correcto de la variable que contiene el nombre del esquema
+            sql_create_table += f"CREATE TABLE {nombre_tabla} (\n"
+
+            for columna in columnas:
+                sql_create_table += f"\t{columna},\n"
+
+            # Elimina la última coma y agrega el comentario de la tabla si existe
+            sql_create_table = sql_create_table.rstrip(",\n")
+            if comentario_tabla:
+                sql_create_table += f"\n) COMMENT = '{comentario_tabla}';"
+            else:
+                sql_create_table += "\n);"
+
+            # Llama al método crear_tabla de la clase SentenciasSQL
+            if self.parent().sentencias_sql.crear_tabla(sql_create_table):
+                self.accept()  # Cierra la ventana InsertadoEnTabla si la tabla se crea con éxito
+        else:
+            self.mostrar_mensaje("La ventana VentanaCrearTabla no está definida en el contexto.")
+        return True  # Devuelve True para indicar que se cargaron los datos correctamente
+
+      except Exception as e:
+        error_details = traceback.format_exc()
+        print(
+         f"Error al guardar las columnas en la tabla '{nombre_tabla}' del esquema '{nombre_del_esquema}': {error_details}")
+        return False  # Devuelve False para indicar que se produjo un error
 
     def guardar_columnas(self):
         self.columnas = []
