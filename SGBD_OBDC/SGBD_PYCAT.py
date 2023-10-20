@@ -368,9 +368,6 @@ class InterfazSgbd(QMainWindow):
             else:
                 self.mostrar_mensaje(f"No se pudo eliminar el esquema '{nombre_esquema}' y sus objetos.")
 
-    def mostrar_ventana_crear_tabla(self):
-        pass
-
     def borrar_esquema_seleccionado(self):
         # Obtén el esquema seleccionado del árbol
         item_seleccionado = self.arbol.currentItem()
@@ -480,6 +477,9 @@ class InterfazSgbd(QMainWindow):
         self.tab_EdicionTabla.setRowCount(0)
         self.tab_EdicionTabla.update()
         self.tab_EdicionTabla.repaint()
+
+    def mostrar_ventana_crear_tabla(self):
+        pass
 
     def mostrar_mensaje(self, mensaje):
         msg = QMessageBox()
