@@ -823,6 +823,7 @@ class SentenciasSQL:
 
     def modificar_columna_LDD(self):
         if nombre_columna != Nuevo_nombreColumna:
+            pass
 
 
     def mostrar_mensaje(self, mensaje):
