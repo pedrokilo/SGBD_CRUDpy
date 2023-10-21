@@ -277,7 +277,7 @@ class InterfazSgbd(QMainWindow):
         item_seleccionado = self.arbol.currentItem()
         if not item_seleccionado or not item_seleccionado.parent():
             # No se seleccionó un esquema, no se puede realizar la modificación
-            self.mostrar_mensaje("Por favor, seleccione un esquema antes de guardar la modificación.")
+            self.mostrar_mensaje("Por favor, seleccione una tabla antes de guardar la modificación.")
             return
 
         esquema_seleccionado = item_seleccionado.parent().text(0)
@@ -475,11 +475,39 @@ class InterfazSgbd(QMainWindow):
 
     def LDD_guardar_modificacion_columna(self):
         # Obtener los valores de la fila actualmente seleccionada en la tabla
-        fila_seleccionada = self.tab_objetos.currentRow()
+        fila_seleccionada = self.tab_EdicionTabla.currentRow()
         if fila_seleccionada == -1:
             return
 
-        pass
+        # Obtener el nuevo nombre y comentario de las celdas de la fila
+        Nuevo_nombreColumna = self.tab_EdicionTabla.item(fila_seleccionada, 0).text()
+        Nuevo_tipoColumna = self.tab_EdicionTabla.item(fila_seleccionada, 1).text()
+        Nuevo_tamañoColumna = self.tab_EdicionTabla.item(fila_seleccionada, 2).text()
+        Nuevo_nuloColumna = self.tab_EdicionTabla.item(fila_seleccionada, 3).text()
+        Nuevo_llaveColumna = self.tab_EdicionTabla.item(fila_seleccionada, 4).text()
+        Nuevo_comentarioColumna = self.tab_objetos.item(fila_seleccionada, 6).text()
+
+        # Obtener el esquema y nombre de la tabla seleccionada desde el árbol
+        item_seleccionado = self.arbol.currentItem()
+        if not item_seleccionado or not item_seleccionado.parent():
+            # No se seleccionó un esquema, no se puede realizar la modificación
+            self.mostrar_mensaje("Por favor, seleccione una tabla antes de guardar la modificación.")
+            return
+
+        #Obtener el nombre la columna seleccionada
+        nombre_columna = self.tab_EdicionTabla.item(fila_seleccionada, 0).text()
+
+        esquema_seleccionado = item_seleccionado.parent().text(0)
+        nombre_tabla_seleccionada = item_seleccionado.text(0)
+
+        # Llamar a la función para modificar la tabla en SentenciasSQL
+        if self.sentencias_sql.modificar_columna_LDD(esquema_seleccionado, nombre_tabla_seleccionada, nombre_columna
+                                                        ,Nuevo_nombreColumna,Nuevo_tipoColumna, Nuevo_tamañoColumna,
+                                                       Nuevo_nuloColumna,Nuevo_llaveColumna, Nuevo_comentarioColumna):
+            self.mostrar_mensaje("Modificación guardada exitosamente.")
+            self.tab_objetos.clearSelection()
+        else:
+            self.mostrar_mensaje(f"Error al guardar la modificación en la columna '{nombre_columna}' de la tabla.")
 
     def _actualizar_vista_despues_de_borrar(self, nombre_del_esquema):
         """ Actualiza la vista del árbol y selecciona el esquema después de borrar una tabla. """
@@ -498,10 +526,6 @@ class InterfazSgbd(QMainWindow):
         pass
 
     def mostrar_ventana_crear_columnas(self):
-        pass
-
-    def modificacion_columnas(self):
-
         pass
 
     def mostrar_mensaje(self, mensaje):
@@ -798,7 +822,8 @@ class SentenciasSQL:
             self.mostrar_mensaje(f"Error al intentar eliminar la columna {columna_seleccionada}: {error_details}")
 
     def modificar_columna_LDD(self):
-        pass
+        if nombre_columna != Nuevo_nombreColumna:
+
 
     def mostrar_mensaje(self, mensaje):
         msg = QMessageBox()
