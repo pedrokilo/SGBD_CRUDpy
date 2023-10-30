@@ -91,6 +91,7 @@ class InterfazSgbd(QMainWindow):
         self.btn_cancelar_mod_objetos.clicked.connect(self.cancelar_modificacion)
         self.btn_guardar_mod_objetos.clicked.connect(self.guardar_modificacion)
             # Agregar una variable para almacenar el nombre de la tabla seleccionada al hacer doble clic
+        self.modo_edicion_activado = False
         self.nombre_tabla_seleccionada = None  # Variable para almacenar el nombre de la tabla seleccionada
         self.btn_activar_mod_objetos.clicked.connect(self.activar_edicion)
         self.btn_borrar_campo.clicked.connect(self.LDD_borrar_campo_seleccionado)
