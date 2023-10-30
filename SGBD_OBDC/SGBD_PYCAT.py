@@ -823,7 +823,6 @@ class SentenciasSQL:
             self.mostrar_mensaje(f"Error al intentar eliminar la columna {columna_seleccionada}: {error_details}")
 
     def modificar_columna_LDD(self):
-        if nombre_columna != Nuevo_nombreColumna:
             pass
 
 
